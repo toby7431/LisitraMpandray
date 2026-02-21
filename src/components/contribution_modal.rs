@@ -153,7 +153,7 @@ pub fn ConfettiLayer(active: RwSignal<bool>) -> impl IntoView {
     view! {
         <div style="pointer-events:none;position:fixed;inset:0;z-index:9998;overflow:hidden;">
             {move || pieces.get().into_iter().map(|css_str| {
-                view! { <div attr:style={css_str} /> }
+                view! { <div style={css_str} /> }
             }).collect_view()}
         </div>
     }
@@ -252,8 +252,11 @@ pub fn ContributionModal(
         <div
             class="fixed inset-0 z-50 flex items-center justify-center p-4 \
                    bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-            on:click=move |ev| {
-                if ev.target() == ev.current_target() { open.set(false); }
+            on:click=move |ev: web_sys::MouseEvent| {
+                let same = ev.target().zip(ev.current_target())
+                    .map(|(t, c)| JsValue::from(t) == JsValue::from(c))
+                    .unwrap_or(false);
+                if same { open.set(false); }
             }
         >
             // Panneau
