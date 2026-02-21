@@ -113,7 +113,10 @@ impl Repository {
         let pool = SqlitePool::connect_with(options).await?;
 
         // Migrations embarquées (src-tauri/migrations/)
-        sqlx::migrate!("migrations").run(&pool).await?;
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .map_err(|e| AppError::Db(sqlx::Error::from(e)))?;
 
         Ok(Repository { pool })
     }

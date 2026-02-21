@@ -33,27 +33,271 @@ html.dark .nav-indicator {
 ::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 9999px; }
 html.dark ::-webkit-scrollbar-thumb { background: #475569; }
 
-/* ─── Verset du jour — glissement de gauche + lueur ─────────────────────────── */
-@keyframes verse-slide-glow {
-  from {
-    opacity: 0;
-    transform: translateX(-32px);
-    text-shadow: none;
+/* ═══ Verset — Lumineux, accueillant, jeux de lumières ════════════════════════ */
+
+/* ── 1. Entrée : glissement depuis la gauche ──────────────────────────────── */
+@keyframes verse-slide-in {
+  from { opacity: 0; transform: translateX(-28px); }
+  65%  { opacity: 1; transform: translateX(4px);   }
+  to   { opacity: 1; transform: translateX(0);      }
+}
+
+/* ── 2. Lueur textuelle MODE CLAIR — pulse or + ciel (bleu-900 → bleu-600) ── */
+@keyframes verse-glow-text-light {
+  0%, 100% {
+    color: #1e3a8a;
+    text-shadow:
+      0 0  8px rgba(251, 191,  36, 0.25),
+      0 0 22px rgba(147, 197, 253, 0.18);
   }
-  65% {
-    opacity: 1;
-    transform: translateX(6px);
-    text-shadow: 0 0 22px rgba(99, 102, 241, 0.55);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-    text-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+  50% {
+    color: #2563eb;
+    text-shadow:
+      0 0 14px rgba(251, 191,  36, 0.80),
+      0 0 32px rgba(147, 197, 253, 0.55),
+      0 0  6px rgba(255, 255, 255, 0.45);
   }
 }
 
+/* ── 2b. Lueur textuelle MODE SOMBRE — pulse indigo → blanc étoilé ─────────── */
+@keyframes verse-glow-text-dark {
+  0%, 100% {
+    color: #818cf8;
+    text-shadow:
+      0 0 10px rgba(165, 180, 252, 0.35),
+      0 0 28px rgba( 99, 102, 241, 0.20);
+  }
+  50% {
+    color: #e0e7ff;
+    text-shadow:
+      0 0 18px rgba(165, 180, 252, 1.00),
+      0 0 44px rgba( 99, 102, 241, 0.65),
+      0 0  8px rgba(255, 255, 255, 0.70);
+  }
+}
+
+/* ── 3. Respiration douce ─────────────────────────────────────────────────── */
+@keyframes verse-breathe {
+  0%, 100% { transform: scale(1);     }
+  50%       { transform: scale(1.007); }
+}
+
+/* ── 4a. Halo pulsé MODE CLAIR — chaleur solaire (blanc + or + ciel) ──────── */
+@keyframes verse-glow-light {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 2px  rgba(255, 255, 255, 0.85))
+      drop-shadow(0 0 10px rgba(251, 191,  36, 0.48))
+      drop-shadow(0 0 28px rgba(147, 197, 253, 0.38))
+      drop-shadow(0 3px 8px rgba( 30,  58, 138, 0.28));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 5px  rgba(255, 255, 255, 1.00))
+      drop-shadow(0 0 20px rgba(251, 191,  36, 0.72))
+      drop-shadow(0 0 48px rgba(147, 197, 253, 0.55))
+      drop-shadow(0 3px 10px rgba(30,  58, 138, 0.40));
+  }
+}
+
+/* ── 4b. Halo pulsé MODE SOMBRE — aura stellaire (blanc + indigo + violet) ── */
+@keyframes verse-glow-dark {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 3px   rgba(255, 255, 255, 1.00))
+      drop-shadow(0 0 14px  rgba(224, 231, 255, 0.78))
+      drop-shadow(0 0 38px  rgba(165, 180, 252, 0.58))
+      drop-shadow(0 0 75px  rgba( 99, 102, 241, 0.28));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 6px   rgba(255, 255, 255, 1.00))
+      drop-shadow(0 0 24px  rgba(224, 231, 255, 1.00))
+      drop-shadow(0 0 62px  rgba(165, 180, 252, 0.82))
+      drop-shadow(0 0 110px rgba( 99, 102, 241, 0.46));
+  }
+}
+
+/* ── 5a. Référence : monte depuis le bas avec délai ──────────────────────── */
+@keyframes verse-ref-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── 5b. Trait ornemental ─────────────────────────────────────────────────── */
+@keyframes verse-ref-line {
+  from { transform: scaleX(0); opacity: 0;    }
+  to   { transform: scaleX(1); opacity: 0.45; }
+}
+
+/* ── 6. Blockquote — entrée + respiration (le glow est géré par .grand-titre) */
 .verse-animate {
-  animation: verse-slide-glow 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation:
+    verse-slide-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both,
+    verse-breathe  6s    ease-in-out 2.5s infinite;
+}
+
+/* ── 7. Texte — Playfair Display + pulse de couleur + lueur (mode CLAIR) ───── */
+/*    bleu-900 ↔ bleu-600 : couleur animée, contraste min ~3:1 sur ciel ✓      */
+/*    text-shadow : halo or/solaire qui pulse avec la couleur                   */
+.verse-text {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  color: #1e3a8a;
+  animation: verse-glow-text-light 4s ease-in-out 1.0s infinite;
+  transition: color 0.35s ease;
+}
+
+/* ── 7b. Texte — mode SOMBRE ──────────────────────────────────────────────── */
+/*    indigo-400 ↔ indigo-100 : pulse vers le blanc étoilé                     */
+html.dark .verse-text {
+  color: #818cf8;
+  animation: verse-glow-text-dark 4s ease-in-out 1.0s infinite;
+}
+
+/* ═══ Grand titre — Typographie & Jeux de lumière ═════════════════════════════ */
+
+/* ── MODE CLAIR : bleu royal → cobalt → or divin → cobalt → bleu royal ────── */
+@keyframes titre-color-light {
+  0% {
+    color: #1e3a8a;
+    letter-spacing: -0.01em;
+    text-shadow:
+      0 0  6px rgba(251, 191,  36, 0.18),
+      0 0 18px rgba(147, 197, 253, 0.14),
+      0 2px 5px rgba( 30,  58, 138, 0.22);
+  }
+  25% {
+    color: #1d4ed8;
+    letter-spacing: -0.005em;
+    text-shadow:
+      0 0 12px rgba(251, 191,  36, 0.55),
+      0 0 32px rgba(147, 197, 253, 0.32),
+      0 0 60px rgba( 99, 102, 241, 0.18),
+      0 2px 6px rgba( 30,  58, 138, 0.22);
+  }
+  50% {
+    color: #2563eb;
+    letter-spacing:  0.005em;
+    text-shadow:
+      0 0 20px rgba(251, 191,  36, 1.00),
+      0 0 50px rgba(147, 197, 253, 0.75),
+      0 0 90px rgba( 99, 102, 241, 0.45),
+      0 0  8px rgba(255, 255, 255, 0.55),
+      0 2px 8px rgba( 30,  58, 138, 0.32);
+  }
+  75% {
+    color: #1d4ed8;
+    letter-spacing: -0.005em;
+    text-shadow:
+      0 0 12px rgba(251, 191,  36, 0.55),
+      0 0 32px rgba(147, 197, 253, 0.32),
+      0 0 60px rgba( 99, 102, 241, 0.18),
+      0 2px 6px rgba( 30,  58, 138, 0.22);
+  }
+  100% {
+    color: #1e3a8a;
+    letter-spacing: -0.01em;
+    text-shadow:
+      0 0  6px rgba(251, 191,  36, 0.18),
+      0 0 18px rgba(147, 197, 253, 0.14),
+      0 2px 5px rgba( 30,  58, 138, 0.22);
+  }
+}
+
+/* ── MODE SOMBRE : indigo → lavande → blanc stellaire → lavande → indigo ───── */
+@keyframes titre-color-dark {
+  0% {
+    color: #6366f1;
+    letter-spacing: -0.01em;
+    text-shadow:
+      0 0  8px rgba(165, 180, 252, 0.32),
+      0 0 22px rgba( 99, 102, 241, 0.18),
+      0 0 45px rgba(139,  92, 246, 0.10);
+  }
+  25% {
+    color: #818cf8;
+    letter-spacing: -0.005em;
+    text-shadow:
+      0 0 15px rgba(165, 180, 252, 0.60),
+      0 0 40px rgba( 99, 102, 241, 0.42),
+      0 0 80px rgba(139,  92, 246, 0.22),
+      0 0  5px rgba(255, 255, 255, 0.28);
+  }
+  50% {
+    color: #c7d2fe;
+    letter-spacing:  0.005em;
+    text-shadow:
+      0 0 25px rgba(165, 180, 252, 1.00),
+      0 0 60px rgba( 99, 102, 241, 0.88),
+      0 0 120px rgba(139,  92, 246, 0.55),
+      0 0  16px rgba(255, 255, 255, 0.85),
+      0 0   4px rgba(255, 255, 255, 1.00);
+  }
+  75% {
+    color: #818cf8;
+    letter-spacing: -0.005em;
+    text-shadow:
+      0 0 15px rgba(165, 180, 252, 0.60),
+      0 0 40px rgba( 99, 102, 241, 0.42),
+      0 0 80px rgba(139,  92, 246, 0.22),
+      0 0  5px rgba(255, 255, 255, 0.28);
+  }
+  100% {
+    color: #6366f1;
+    letter-spacing: -0.01em;
+    text-shadow:
+      0 0  8px rgba(165, 180, 252, 0.32),
+      0 0 22px rgba( 99, 102, 241, 0.18),
+      0 0 45px rgba(139,  92, 246, 0.10);
+  }
+}
+
+/* ── Grand titre — typographie (commun aux deux modes) ────────────────────── */
+.grand-titre {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: common-ligatures;
+  /* Mode clair */
+  color: #1e3a8a;
+  animation: titre-color-light 6s ease-in-out 1s infinite;
+  transition: color 0.4s ease;
+}
+
+/* ── Grand titre MODE SOMBRE ──────────────────────────────────────────────── */
+html.dark .grand-titre {
+  color: #6366f1;
+  animation: titre-color-dark 6s ease-in-out 1s infinite;
+}
+
+/* ── Référence — Cinzel, petites capitales sobres ─────────────────────────── */
+.verse-ref {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.14em;
+  color: #1e40af;
+  transition: color 0.4s ease;
+  animation: verse-ref-rise 0.65s ease-out 0.7s both;
+}
+html.dark .verse-ref {
+  color: #a5b4fc;
+}
+
+.verse-ref::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 2px;
+  margin: 8px auto 0;
+  border-radius: 9999px;
+  background: currentColor;
+  transform-origin: center;
+  animation: verse-ref-line 0.7s ease-out 1.4s both;
 }
 
 /* ─── Transitions globales ─────────────────────────────────────────────────── */

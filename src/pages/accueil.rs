@@ -1,58 +1,57 @@
-use js_sys::{Function, Promise};
+use js_sys::{Date, Function, Math, Promise};
 use leptos::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::services::db_service;
 
-// ─── Versets bibliques ────────────────────────────────────────────────────────
+// ─── Versets bibliques — sélection aléatoire à chaque ouverture ──────────────
 
 const VERSES: &[(&str, &str)] = &[
-    (
-        "Jean 3:16",
-        "Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que \
-         quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle.",
-    ),
-    (
-        "Philippiens 4:13",
-        "Je puis tout par celui qui me fortifie.",
-    ),
-    (
-        "Psaume 23:1",
-        "L'Éternel est mon berger : je ne manquerai de rien.",
-    ),
-    (
-        "Romains 8:28",
-        "Nous savons, du reste, que toutes choses concourent au bien de ceux qui aiment Dieu.",
-    ),
-    (
-        "Josué 1:9",
-        "Sois fort et courageux ! Ne te frappe pas de terreur et ne t'effraie pas, \
-         car l'Éternel, ton Dieu, est avec toi dans tout ce que tu entreprendras.",
-    ),
-    (
-        "Matthieu 11:28",
-        "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
-    ),
-    (
-        "Proverbes 3:5-6",
-        "Confie-toi en l'Éternel de tout ton cœur, et ne t'appuie pas sur ta sagesse ; \
-         reconnais-le dans toutes tes voies, et il aplanira tes sentiers.",
-    ),
-    (
-        "Ésaïe 40:31",
-        "Ceux qui se confient en l'Éternel renouvellent leur force. \
-         Ils prennent le vol comme les aigles.",
-    ),
-    (
-        "Psaume 46:2",
-        "Dieu est pour nous un refuge et un appui, un secours qui ne manque jamais dans la détresse.",
-    ),
-    (
-        "1 Corinthiens 13:13",
-        "Maintenant ces trois choses demeurent : la foi, l'espérance, la charité ; \
-         mais la plus grande de ces choses, c'est la charité.",
-    ),
+    ("Jean 3:16",
+     "Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que \
+      quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle."),
+    ("Philippiens 4:13",
+     "Je puis tout par celui qui me fortifie."),
+    ("Psaume 23:1",
+     "L'Éternel est mon berger : je ne manquerai de rien."),
+    ("Romains 8:28",
+     "Nous savons, du reste, que toutes choses concourent au bien de ceux \
+      qui aiment Dieu."),
+    ("Josué 1:9",
+     "Sois fort et courageux ! Ne te frappe pas de terreur et ne t'effraie pas, \
+      car l'Éternel, ton Dieu, est avec toi dans tout ce que tu entreprendras."),
+    ("Matthieu 11:28",
+     "Venez à moi, vous tous qui êtes fatigués et chargés, \
+      et je vous donnerai du repos."),
+    ("Proverbes 3:5-6",
+     "Confie-toi en l'Éternel de tout ton cœur, et ne t'appuie pas sur ta sagesse ; \
+      reconnais-le dans toutes tes voies, et il aplanira tes sentiers."),
+    ("Ésaïe 40:31",
+     "Ceux qui se confient en l'Éternel renouvellent leur force. \
+      Ils prennent le vol comme les aigles."),
+    ("Psaume 46:2",
+     "Dieu est pour nous un refuge et un appui, \
+      un secours qui ne manque jamais dans la détresse."),
+    ("1 Corinthiens 13:13",
+     "Maintenant ces trois choses demeurent : la foi, l'espérance, la charité ; \
+      mais la plus grande de ces choses, c'est la charité."),
 ];
+
+// ─── Formatage des montants en Ariary ────────────────────────────────────────
+
+fn format_ariary(n: i64) -> String {
+    let s = n.to_string();
+    let len = s.len();
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        // Insère une espace tous les 3 chiffres en partant de la droite
+        if i > 0 && (len - i) % 3 == 0 {
+            result.push(' ');
+        }
+        result.push(c);
+    }
+    format!("{} Ar", result)
+}
 
 // ─── Helpers async ────────────────────────────────────────────────────────────
 
@@ -95,11 +94,10 @@ async fn animate_count_i64(signal: RwSignal<i64>, target: i64) {
 
 #[component]
 pub fn Accueil() -> impl IntoView {
-    // Verset aléatoire — choisi une fois à la création du composant
-    let verse_idx = (js_sys::Math::random() * VERSES.len() as f64) as usize % VERSES.len();
+    let verse_idx = (Math::random() * VERSES.len() as f64) as usize % VERSES.len();
     let (verse_ref, verse_text) = VERSES[verse_idx];
 
-    let current_year = js_sys::Date::new_0().get_full_year() as i32;
+    let current_year = Date::new_0().get_full_year() as i32;
 
     // Signaux d'affichage animés
     let communiants_display: RwSignal<usize> = RwSignal::new(0);
@@ -124,38 +122,48 @@ pub fn Accueil() -> impl IntoView {
     });
 
     view! {
-        <div class="animate-fade-in space-y-6 sm:space-y-8">
+        <div class="animate-fade-in space-y-6 sm:space-y-10">
 
             // ── Verset du jour ─────────────────────────────────────────────────
-            <section class="mx-auto max-w-2xl px-4 pt-6 sm:pt-10">
-                <div class="relative rounded-2xl \
-                            border border-indigo-100 dark:border-indigo-900/50 \
-                            bg-white/60 dark:bg-gray-800/60 backdrop-blur \
-                            px-6 py-5 sm:px-8 sm:py-6 shadow-sm overflow-hidden">
+            <section class="text-center px-4 pt-8 sm:pt-12 md:pt-16 pb-2">
 
-                    // Barre d'accent verticale
-                    <div class="absolute left-0 top-0 bottom-0 w-1 \
-                                bg-gradient-to-b from-indigo-400 to-purple-500 \
-                                rounded-l-2xl" />
+                // Étiquette discrète
+                // Clair : blue-800 sur ciel bleu → contraste ~6:1 ✓
+                // Sombre : indigo-300 sur ardoise → contraste ~8:1 ✓
+                <p class="text-[0.65rem] sm:text-xs font-semibold uppercase \
+                           tracking-[0.25em] mb-4 \
+                           text-blue-800 dark:text-indigo-300 \
+                           select-none">
+                    "✦ Verset du jour ✦"
+                </p>
 
-                    <p class="text-xs font-semibold \
-                               text-indigo-500 dark:text-indigo-400 \
-                               uppercase tracking-widest mb-3 ml-2">
-                        "Verset du jour"
-                    </p>
-
-                    <blockquote class="verse-animate ml-2">
-                        <p class="text-base sm:text-lg \
-                                  text-gray-700 dark:text-gray-200 \
-                                  italic leading-relaxed">
-                            {format!("« {} »", verse_text)}
-                        </p>
-                        <footer class="mt-2 text-xs sm:text-sm font-semibold \
-                                       text-indigo-600 dark:text-indigo-400">
-                            "— " {verse_ref}
-                        </footer>
-                    </blockquote>
+                // Séparateur ornemental
+                <div class="flex items-center justify-center gap-2 mb-6 sm:mb-8">
+                    <div class="h-px w-8 sm:w-12 \
+                                bg-blue-800/25 dark:bg-indigo-400/45" />
+                    <span class="text-blue-700/55 dark:text-indigo-400/65 text-xs">
+                        "✝"
+                    </span>
+                    <div class="h-px w-8 sm:w-12 \
+                                bg-blue-800/25 dark:bg-indigo-400/45" />
                 </div>
+
+                // Citation animée — grand titre avec shimmer + glow + respiration
+                <blockquote class="verse-animate max-w-xs sm:max-w-xl md:max-w-2xl \
+                                   lg:max-w-3xl mx-auto">
+                    <p class="grand-titre font-bold italic \
+                               text-2xl sm:text-3xl md:text-4xl lg:text-5xl \
+                               leading-snug sm:leading-snug">
+                        {format!("« {} »", verse_text)}
+                    </p>
+                    // Référence : casse naturelle, pas de majuscules imposées
+                    <footer class="verse-ref mt-5 sm:mt-6 \
+                                   text-xs sm:text-sm md:text-base \
+                                   font-medium tracking-wide">
+                        "— " {verse_ref}
+                    </footer>
+                </blockquote>
+
             </section>
 
             // ── Cartes de statistiques ─────────────────────────────────────────
@@ -199,7 +207,7 @@ pub fn Accueil() -> impl IntoView {
                     </div>
                     <p class="text-2xl sm:text-3xl font-bold font-mono \
                                text-gray-800 dark:text-white shrink-0">
-                        {move || format!("{} Ar", contributions_display.get())}
+                        {move || format_ariary(contributions_display.get())}
                     </p>
                 </div>
             </section>

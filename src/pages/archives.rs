@@ -1,6 +1,20 @@
 use leptos::prelude::*;
 use crate::{models::year_summary::YearSummary, services::db_service};
 
+fn format_ariary(total_str: &str) -> String {
+    let n = total_str.parse::<f64>().unwrap_or(0.0) as i64;
+    let s = n.to_string();
+    let len = s.len();
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if i > 0 && (len - i) % 3 == 0 {
+            result.push(' ');
+        }
+        result.push(c);
+    }
+    format!("{} Ar", result)
+}
+
 /// Page Archives — affiche les résumés annuels des cotisations.
 /// (Le concept d'archivage de membres est remplacé par les résumés financiers par année.)
 #[component]
@@ -109,7 +123,7 @@ fn YearCard(summary: YearSummary) -> impl IntoView {
 
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">"Total cotisations"</p>
             <p class="text-xl font-semibold text-gray-800 dark:text-white font-mono">
-                {format!("{} Ar", summary.total)}
+                {format_ariary(&summary.total)}
             </p>
 
             {summary.note.map(|n| view! {
