@@ -1,6 +1,7 @@
 mod db;
 use db::{
-    Contribution, ContributionInput, Member, MemberInput, Repository, YearSummary,
+    Contribution, ContributionInput, Member, MemberInput, MemberWithTotal, Repository,
+    YearSummary,
 };
 use tauri::Manager;
 
@@ -19,6 +20,17 @@ async fn get_members_by_type(
     member_type: String,
 ) -> Result<Vec<Member>, String> {
     state.get_members_by_type(&member_type).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_members_by_type_with_total(
+    state: tauri::State<'_, Repository>,
+    member_type: String,
+) -> Result<Vec<MemberWithTotal>, String> {
+    state
+        .get_members_by_type_with_total(&member_type)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -153,6 +165,7 @@ pub fn run() {
             // Member
             get_members,
             get_members_by_type,
+            get_members_by_type_with_total,
             get_member,
             create_member,
             update_member,

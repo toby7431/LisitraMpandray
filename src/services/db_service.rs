@@ -9,7 +9,7 @@ use wasm_bindgen_futures::JsFuture;
 
 use crate::models::{
     contribution::{Contribution, ContributionInput},
-    member::{Member, MemberInput},
+    member::{Member, MemberInput, MemberWithTotal},
     year_summary::YearSummary,
 };
 
@@ -54,6 +54,17 @@ pub async fn get_members() -> Result<Vec<Member>, String> {
 pub async fn get_members_by_type(member_type: &str) -> Result<Vec<Member>, String> {
     let res = invoke(
         "get_members_by_type",
+        to_js(&serde_json::json!({ "memberType": member_type })),
+    )
+    .await?;
+    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+}
+
+pub async fn get_members_by_type_with_total(
+    member_type: &str,
+) -> Result<Vec<MemberWithTotal>, String> {
+    let res = invoke(
+        "get_members_by_type_with_total",
         to_js(&serde_json::json!({ "memberType": member_type })),
     )
     .await?;

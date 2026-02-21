@@ -62,6 +62,24 @@ pub struct MemberInput {
     pub member_type: String,
 }
 
+// ─── Modèle MemberWithTotal ───────────────────────────────────────────────────
+
+/// Membre avec le total de toutes ses contributions (calculé par JOIN SQL).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemberWithTotal {
+    pub id:                  i64,
+    pub card_number:         String,
+    pub full_name:           String,
+    pub address:             Option<String>,
+    pub phone:               Option<String>,
+    pub job:                 Option<String>,
+    pub gender:              String,
+    pub member_type:         String,
+    pub created_at:          String,
+    /// Total en Ariary, arrondi à l'entier (ex: "15000")
+    pub total_contributions: String,
+}
+
 // ─── Modèle Contribution ──────────────────────────────────────────────────────
 
 /// `amount` est sérialisé en chaîne pour la compatibilité JSON ↔ rust_decimal.
@@ -217,6 +235,44 @@ impl Repository {
         .await?;
 
         Ok(rows.iter().map(Self::map_member).collect())
+    }
+
+    pub async fn get_members_by_type_with_total(
+        &self,
+        member_type: &str,
+    ) -> Result<Vec<MemberWithTotal>, AppError> {
+        let rows = sqlx::query(
+            "SELECT m.id, m.card_number, m.full_name, m.address, m.phone, m.job,
+                    m.gender, m.member_type, m.created_at,
+                    COALESCE(SUM(CAST(c.amount AS REAL)), 0) AS total_contributions
+             FROM members m
+             LEFT JOIN contributions c ON c.member_id = m.id
+             WHERE m.member_type = ?
+             GROUP BY m.id
+             ORDER BY m.full_name ASC",
+        )
+        .bind(member_type)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                let total: f64 = r.get("total_contributions");
+                MemberWithTotal {
+                    id:                  r.get("id"),
+                    card_number:         r.get("card_number"),
+                    full_name:           r.get("full_name"),
+                    address:             r.get("address"),
+                    phone:               r.get("phone"),
+                    job:                 r.get("job"),
+                    gender:              r.get("gender"),
+                    member_type:         r.get("member_type"),
+                    created_at:          r.get("created_at"),
+                    total_contributions: format!("{:.0}", total),
+                }
+            })
+            .collect())
     }
 
     pub async fn get_member(&self, id: i64) -> Result<Member, AppError> {

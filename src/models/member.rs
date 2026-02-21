@@ -17,6 +17,21 @@ pub struct Member {
     pub created_at:  String,
 }
 
+/// Membre avec total des contributions (retourné par `get_members_by_type_with_total`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MemberWithTotal {
+    pub id:                  i64,
+    pub card_number:         String,
+    pub full_name:           String,
+    pub address:             Option<String>,
+    pub phone:               Option<String>,
+    pub job:                 Option<String>,
+    pub gender:              String,
+    pub member_type:         String,
+    pub created_at:          String,
+    pub total_contributions: String,
+}
+
 /// Données saisies pour créer ou modifier un membre.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct MemberInput {

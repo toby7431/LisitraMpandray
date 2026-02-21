@@ -1,3 +1,6 @@
+pub mod contribution_modal;
+pub mod member_page;
 pub mod navbar;
+pub mod phone_input;
 pub mod sky_canvas;
 pub mod theme_switcher;
