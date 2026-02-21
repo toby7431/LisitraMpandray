@@ -54,7 +54,7 @@ pub fn Navbar() -> impl IntoView {
                         <span class="text-xl sm:text-2xl" aria-hidden="true">"⛪"</span>
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
-                                "FJKM Ambalavao Isotry"
+                                "Église Gestion"
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
                                 "Madagascar"
