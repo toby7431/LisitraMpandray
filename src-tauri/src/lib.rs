@@ -1,85 +1,173 @@
 mod db;
-use db::{DbState, MembreInput};
+use db::{
+    Contribution, ContributionInput, Member, MemberInput, Repository, YearSummary,
+};
 use tauri::Manager;
 
-// ─── Commandes Tauri ────────────────────────────────────────────────────────
+// ─── Commandes Member ─────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn get_membres(
-    state: tauri::State<'_, DbState>,
-) -> Result<Vec<db::Membre>, String> {
-    state.get_membres().await.map_err(|e| e.to_string())
+async fn get_members(
+    state: tauri::State<'_, Repository>,
+) -> Result<Vec<Member>, String> {
+    state.get_members().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn add_membre(
-    state: tauri::State<'_, DbState>,
-    membre: MembreInput,
-) -> Result<db::Membre, String> {
-    state.add_membre(membre).await.map_err(|e| e.to_string())
+async fn get_members_by_type(
+    state: tauri::State<'_, Repository>,
+    member_type: String,
+) -> Result<Vec<Member>, String> {
+    state.get_members_by_type(&member_type).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn update_membre(
-    state: tauri::State<'_, DbState>,
+async fn get_member(
+    state: tauri::State<'_, Repository>,
     id: i64,
-    membre: MembreInput,
-) -> Result<db::Membre, String> {
-    state.update_membre(id, membre).await.map_err(|e| e.to_string())
+) -> Result<Member, String> {
+    state.get_member(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn archive_membre(
-    state: tauri::State<'_, DbState>,
+async fn create_member(
+    state: tauri::State<'_, Repository>,
+    member: MemberInput,
+) -> Result<Member, String> {
+    state.create_member(member).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_member(
+    state: tauri::State<'_, Repository>,
+    id: i64,
+    member: MemberInput,
+) -> Result<Member, String> {
+    state.update_member(id, member).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_member(
+    state: tauri::State<'_, Repository>,
     id: i64,
 ) -> Result<(), String> {
-    state.archive_membre(id).await.map_err(|e| e.to_string())
+    state.delete_member(id).await.map_err(|e| e.to_string())
+}
+
+// ─── Commandes Contribution ───────────────────────────────────────────────────
+
+#[tauri::command]
+async fn get_contributions(
+    state: tauri::State<'_, Repository>,
+    member_id: i64,
+) -> Result<Vec<Contribution>, String> {
+    state.get_contributions(member_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-async fn delete_membre(
-    state: tauri::State<'_, DbState>,
-    id: i64,
-) -> Result<(), String> {
-    state.delete_membre(id).await.map_err(|e| e.to_string())
+async fn get_contributions_by_year(
+    state: tauri::State<'_, Repository>,
+    year: i32,
+) -> Result<Vec<Contribution>, String> {
+    state.get_contributions_by_year(year).await.map_err(|e| e.to_string())
 }
 
-// ─── Point d'entrée ─────────────────────────────────────────────────────────
+#[tauri::command]
+async fn create_contribution(
+    state: tauri::State<'_, Repository>,
+    contribution: ContributionInput,
+) -> Result<Contribution, String> {
+    state.create_contribution(contribution).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn delete_contribution(
+    state: tauri::State<'_, Repository>,
+    id: i64,
+) -> Result<(), String> {
+    state.delete_contribution(id).await.map_err(|e| e.to_string())
+}
+
+// ─── Commandes YearSummary ────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn get_year_summaries(
+    state: tauri::State<'_, Repository>,
+) -> Result<Vec<YearSummary>, String> {
+    state.get_year_summaries().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_year_summary(
+    state: tauri::State<'_, Repository>,
+    year: i32,
+) -> Result<Option<YearSummary>, String> {
+    state.get_year_summary(year).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn close_year(
+    state: tauri::State<'_, Repository>,
+    year: i32,
+    note: Option<String>,
+) -> Result<YearSummary, String> {
+    state.close_year(year, note).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn reopen_year(
+    state: tauri::State<'_, Repository>,
+    year: i32,
+) -> Result<YearSummary, String> {
+    state.reopen_year(year).await.map_err(|e| e.to_string())
+}
+
+// ─── Point d'entrée ───────────────────────────────────────────────────────────
 
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // Répertoire de données de l'application
             let app_dir = app
                 .path()
                 .app_data_dir()
-                .expect("Impossible d'obtenir le répertoire app_data");
+                .expect("Impossible d'obtenir app_data_dir");
             std::fs::create_dir_all(&app_dir)
-                .expect("Impossible de créer le répertoire app_data");
+                .expect("Impossible de créer app_data_dir");
 
-            let db_path = app_dir.join("eglise.db");
-            let db_url = format!(
-                "sqlite://{}?mode=rwc",
-                db_path.to_str().expect("Chemin DB invalide")
-            );
+            let db_path = app_dir
+                .join("eglise.db")
+                .to_str()
+                .expect("Chemin DB invalide (non-UTF8)")
+                .to_owned();
 
-            // Initialiser la base de données (synchrone au démarrage)
             let rt = tokio::runtime::Runtime::new()
                 .expect("Impossible de créer le runtime Tokio");
-            let db_state = rt
-                .block_on(DbState::new(&db_url))
-                .expect("Impossible d'initialiser la base de données SQLite");
+            let repo = rt
+                .block_on(Repository::new(&db_path))
+                .expect("Impossible d'initialiser la base SQLite");
 
-            app.manage(db_state);
+            app.manage(repo);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_membres,
-            add_membre,
-            update_membre,
-            archive_membre,
-            delete_membre,
+            // Member
+            get_members,
+            get_members_by_type,
+            get_member,
+            create_member,
+            update_member,
+            delete_member,
+            // Contribution
+            get_contributions,
+            get_contributions_by_year,
+            create_contribution,
+            delete_contribution,
+            // YearSummary
+            get_year_summaries,
+            get_year_summary,
+            close_year,
+            reopen_year,
         ])
         .run(tauri::generate_context!())
-        .expect("Erreur lors du lancement de l'application Tauri");
+        .expect("Erreur lors du lancement de Tauri");
 }

@@ -1,9 +1,9 @@
 use leptos::prelude::*;
-use crate::{models::membre::Membre, services::db_service};
+use crate::{models::member::Member, services::db_service};
 
 #[component]
 pub fn Cathekomens() -> impl IntoView {
-    let membres: RwSignal<Vec<Membre>> = RwSignal::new(vec![]);
+    let membres: RwSignal<Vec<Member>> = RwSignal::new(vec![]);
     let loading = RwSignal::new(false);
     let erreur: RwSignal<Option<String>> = RwSignal::new(None);
 
@@ -11,15 +11,9 @@ pub fn Cathekomens() -> impl IntoView {
         loading.set(true);
         erreur.set(None);
         leptos::task::spawn_local(async move {
-            match db_service::get_membres().await {
-                Ok(liste) => {
-                    let cathekomens: Vec<_> = liste
-                        .into_iter()
-                        .filter(|m| m.type_membre == "Cathekomen" && m.statut == "Actif")
-                        .collect();
-                    membres.set(cathekomens);
-                }
-                Err(e) => erreur.set(Some(e)),
+            match db_service::get_members_by_type("Cathekomen").await {
+                Ok(liste) => membres.set(liste),
+                Err(e)    => erreur.set(Some(e)),
             }
             loading.set(false);
         });
@@ -70,7 +64,7 @@ pub fn Cathekomens() -> impl IntoView {
                                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                                     text-center py-16 sm:py-20 \
                                     text-gray-400 dark:text-gray-500">
-                            <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">"📖"</div>
+                            <div class="text-4xl sm:text-5xl mb-3">"📖"</div>
                             <p class="text-base sm:text-lg font-medium">
                                 "Aucun cathécomène enregistré"
                             </p>
@@ -92,12 +86,17 @@ pub fn Cathekomens() -> impl IntoView {
                                         <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
                                                    border-b border-gray-100 dark:border-gray-700">
                                             <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400">"Nom"</th>
-                                            <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400">"Prénom"</th>
+                                                       text-gray-600 dark:text-gray-400">
+                                                "N° Carte"
+                                            </th>
                                             <th class="text-left px-4 py-3 font-semibold \
                                                        text-gray-600 dark:text-gray-400">
-                                                "Date naissance"
+                                                "Nom complet"
+                                            </th>
+                                            <th class="text-left px-4 py-3 font-semibold \
+                                                       text-gray-600 dark:text-gray-400 \
+                                                       hidden lg:table-cell">
+                                                "Téléphone"
                                             </th>
                                             <th class="px-4 py-3" />
                                         </tr>
@@ -112,17 +111,18 @@ pub fn Cathekomens() -> impl IntoView {
                                                            hover:bg-emerald-50/50 \
                                                            dark:hover:bg-emerald-900/10 \
                                                            transition-colors duration-150">
+                                                    <td class="px-4 py-3 text-xs font-mono \
+                                                               text-gray-500 dark:text-gray-400">
+                                                        {m.card_number}
+                                                    </td>
                                                     <td class="px-4 py-3 font-medium \
                                                                text-gray-800 dark:text-white">
-                                                        {m.nom}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-600 \
-                                                               dark:text-gray-300">
-                                                        {m.prenom}
+                                                        {m.full_name}
                                                     </td>
                                                     <td class="px-4 py-3 text-gray-500 \
-                                                               dark:text-gray-400">
-                                                        {m.date_naissance.unwrap_or_else(|| "—".into())}
+                                                               dark:text-gray-400 \
+                                                               hidden lg:table-cell">
+                                                        {m.phone.unwrap_or_else(|| "—".into())}
                                                     </td>
                                                     <td class="px-4 py-3 text-right">
                                                         <button class="text-xs text-emerald-600 \
@@ -151,12 +151,12 @@ pub fn Cathekomens() -> impl IntoView {
                                             <div class="min-w-0">
                                                 <p class="font-medium text-gray-800 \
                                                            dark:text-white text-sm truncate">
-                                                    {format!("{} {}", m.nom, m.prenom)}
+                                                    {m.full_name}
                                                 </p>
-                                                {m.date_naissance.map(|d| view! {
-                                                    <p class="text-xs text-gray-500 \
-                                                               dark:text-gray-400 mt-0.5">{d}</p>
-                                                })}
+                                                <p class="text-xs font-mono text-gray-400 \
+                                                           dark:text-gray-500 mt-0.5">
+                                                    {m.card_number}
+                                                </p>
                                             </div>
                                             <button class="text-xs text-emerald-600 \
                                                            dark:text-emerald-400 \

@@ -1,9 +1,11 @@
 use leptos::prelude::*;
-use crate::{models::membre::Membre, services::db_service};
+use crate::{models::year_summary::YearSummary, services::db_service};
 
+/// Page Archives — affiche les résumés annuels des cotisations.
+/// (Le concept d'archivage de membres est remplacé par les résumés financiers par année.)
 #[component]
 pub fn Archives() -> impl IntoView {
-    let membres: RwSignal<Vec<Membre>> = RwSignal::new(vec![]);
+    let summaries: RwSignal<Vec<YearSummary>> = RwSignal::new(vec![]);
     let loading = RwSignal::new(false);
     let erreur: RwSignal<Option<String>> = RwSignal::new(None);
 
@@ -11,15 +13,9 @@ pub fn Archives() -> impl IntoView {
         loading.set(true);
         erreur.set(None);
         leptos::task::spawn_local(async move {
-            match db_service::get_membres().await {
-                Ok(liste) => {
-                    let archives: Vec<_> = liste
-                        .into_iter()
-                        .filter(|m| m.statut == "Archive")
-                        .collect();
-                    membres.set(archives);
-                }
-                Err(e) => erreur.set(Some(e)),
+            match db_service::get_year_summaries().await {
+                Ok(liste) => summaries.set(liste),
+                Err(e)    => erreur.set(Some(e)),
             }
             loading.set(false);
         });
@@ -32,10 +28,10 @@ pub fn Archives() -> impl IntoView {
 
             <div>
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
-                    "📦 Archives"
+                    "📦 Résumés annuels"
                 </h1>
                 <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
-                    "Membres archivés (inactifs ou partis)"
+                    "Totaux des cotisations par année — recalculés automatiquement"
                 </p>
             </div>
 
@@ -55,137 +51,78 @@ pub fn Archives() -> impl IntoView {
                                         border-t-transparent rounded-full animate-spin" />
                         </div>
                     }.into_any()
-                } else if membres.get().is_empty() {
+                } else if summaries.get().is_empty() {
                     view! {
                         <div class="bg-white/60 dark:bg-gray-800/60 backdrop-blur \
                                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                                     text-center py-16 sm:py-20 \
                                     text-gray-400 dark:text-gray-500">
-                            <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">"📦"</div>
-                            <p class="text-base sm:text-lg font-medium">"Aucune archive"</p>
+                            <div class="text-4xl sm:text-5xl mb-3">"📦"</div>
+                            <p class="text-base sm:text-lg font-medium">
+                                "Aucun résumé annuel"
+                            </p>
                             <p class="text-xs sm:text-sm mt-1">
-                                "Les membres archivés apparaîtront ici."
+                                "Les résumés apparaissent automatiquement dès la première cotisation enregistrée."
                             </p>
                         </div>
                     }.into_any()
                 } else {
                     view! {
-                        <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                    rounded-2xl border border-gray-100 dark:border-gray-700 \
-                                    overflow-hidden shadow-sm">
-
-                            // ── Tableau (md+) ──────────────────────────────────
-                            <div class="hidden md:block overflow-x-auto">
-                                <table class="w-full text-sm">
-                                    <thead>
-                                        <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
-                                                   border-b border-gray-100 dark:border-gray-700">
-                                            <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400">"Nom"</th>
-                                            <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400">"Prénom"</th>
-                                            <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400">"Type"</th>
-                                            <th class="text-left px-4 py-3 font-semibold \
-                                                       text-gray-600 dark:text-gray-400 \
-                                                       hidden lg:table-cell">
-                                                "Adhésion"
-                                            </th>
-                                            <th class="px-4 py-3" />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <For
-                                            each=move || membres.get()
-                                            key=|m| m.id
-                                            children=|m| view! {
-                                                <tr class="border-b border-gray-50 \
-                                                           dark:border-gray-700/50 \
-                                                           hover:bg-gray-50/80 \
-                                                           dark:hover:bg-gray-700/30 \
-                                                           transition-colors duration-150 \
-                                                           opacity-75">
-                                                    <td class="px-4 py-3 font-medium \
-                                                               text-gray-700 dark:text-gray-200">
-                                                        {m.nom}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-500 \
-                                                               dark:text-gray-400">
-                                                        {m.prenom}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-500 \
-                                                               dark:text-gray-400">
-                                                        <span class="px-2 py-0.5 rounded-full \
-                                                                     text-xs bg-gray-100 \
-                                                                     dark:bg-gray-700 \
-                                                                     text-gray-600 \
-                                                                     dark:text-gray-300">
-                                                            {m.type_membre}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-500 \
-                                                               dark:text-gray-400 \
-                                                               hidden lg:table-cell">
-                                                        {m.date_adhesion}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-right">
-                                                        <button class="text-xs text-gray-500 \
-                                                                       dark:text-gray-400 \
-                                                                       hover:text-blue-600 \
-                                                                       dark:hover:text-blue-400 \
-                                                                       hover:underline font-medium \
-                                                                       transition-colors duration-150">
-                                                            "Restaurer"
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        />
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            // ── Cartes (mobile) ────────────────────────────────
-                            <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
-                                <For
-                                    each=move || membres.get()
-                                    key=|m| m.id
-                                    children=|m| view! {
-                                        <div class="flex items-center justify-between px-4 py-3 \
-                                                    opacity-75 hover:bg-gray-50/60 \
-                                                    dark:hover:bg-gray-700/20 \
-                                                    transition-colors duration-150">
-                                            <div class="min-w-0">
-                                                <p class="font-medium text-gray-700 \
-                                                           dark:text-gray-200 text-sm truncate">
-                                                    {format!("{} {}", m.nom, m.prenom)}
-                                                </p>
-                                                <span class="inline-block mt-1 px-2 py-0.5 \
-                                                             rounded-full text-xs \
-                                                             bg-gray-100 dark:bg-gray-700 \
-                                                             text-gray-600 dark:text-gray-300">
-                                                    {m.type_membre}
-                                                </span>
-                                            </div>
-                                            <button class="text-xs text-gray-500 \
-                                                           dark:text-gray-400 \
-                                                           hover:text-blue-600 \
-                                                           dark:hover:text-blue-400 \
-                                                           hover:underline font-medium \
-                                                           ml-3 shrink-0 \
-                                                           transition-colors duration-150">
-                                                "Restaurer"
-                                            </button>
-                                        </div>
-                                    }
-                                />
-                            </div>
-
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <For
+                                each=move || summaries.get()
+                                key=|s| s.year
+                                children=|s| view! { <YearCard summary=s /> }
+                            />
                         </div>
                     }.into_any()
                 }
             }}
 
+        </div>
+    }
+}
+
+#[component]
+fn YearCard(summary: YearSummary) -> impl IntoView {
+    let is_closed = summary.closed_at.is_some();
+    let badge_class = if is_closed {
+        "px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 \
+         text-gray-500 dark:text-gray-400"
+    } else {
+        "px-2 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-900/40 \
+         text-emerald-700 dark:text-emerald-300"
+    };
+
+    view! {
+        <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
+                    rounded-2xl border border-gray-100 dark:border-gray-700 \
+                    p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div class="flex items-start justify-between mb-3">
+                <span class="text-2xl font-bold text-gray-800 dark:text-white">
+                    {summary.year.to_string()}
+                </span>
+                <span class=badge_class>
+                    {if is_closed { "Clôturé" } else { "Ouvert" }}
+                </span>
+            </div>
+
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">"Total cotisations"</p>
+            <p class="text-xl font-semibold text-gray-800 dark:text-white font-mono">
+                {format!("{} Ar", summary.total)}
+            </p>
+
+            {summary.note.map(|n| view! {
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic truncate">
+                    {n}
+                </p>
+            })}
+
+            {summary.closed_at.map(|dt| view! {
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    "Clôturé le " {dt.chars().take(10).collect::<String>()}
+                </p>
+            })}
         </div>
     }
 }

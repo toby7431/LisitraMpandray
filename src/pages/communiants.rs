@@ -1,9 +1,9 @@
 use leptos::prelude::*;
-use crate::{models::membre::Membre, services::db_service};
+use crate::{models::member::Member, services::db_service};
 
 #[component]
 pub fn Communiants() -> impl IntoView {
-    let membres: RwSignal<Vec<Membre>> = RwSignal::new(vec![]);
+    let membres: RwSignal<Vec<Member>> = RwSignal::new(vec![]);
     let loading = RwSignal::new(false);
     let erreur: RwSignal<Option<String>> = RwSignal::new(None);
 
@@ -11,15 +11,9 @@ pub fn Communiants() -> impl IntoView {
         loading.set(true);
         erreur.set(None);
         leptos::task::spawn_local(async move {
-            match db_service::get_membres().await {
-                Ok(liste) => {
-                    let communiants: Vec<_> = liste
-                        .into_iter()
-                        .filter(|m| m.type_membre == "Communiant" && m.statut == "Actif")
-                        .collect();
-                    membres.set(communiants);
-                }
-                Err(e) => erreur.set(Some(e)),
+            match db_service::get_members_by_type("Communiant").await {
+                Ok(liste) => membres.set(liste),
+                Err(e)    => erreur.set(Some(e)),
             }
             loading.set(false);
         });
@@ -30,7 +24,6 @@ pub fn Communiants() -> impl IntoView {
     view! {
         <div class="animate-fade-in space-y-4 sm:space-y-6">
 
-            // ── En-tête ────────────────────────────────────────────────────────
             <div class="flex flex-wrap items-start sm:items-center justify-between gap-3">
                 <div>
                     <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white \
@@ -50,7 +43,6 @@ pub fn Communiants() -> impl IntoView {
                 </button>
             </div>
 
-            // ── Feedback erreur ────────────────────────────────────────────────
             {move || erreur.get().map(|e| view! {
                 <div class="p-3 sm:p-4 bg-red-50 dark:bg-red-900/30 \
                             border border-red-200 dark:border-red-700 \
@@ -59,7 +51,6 @@ pub fn Communiants() -> impl IntoView {
                 </div>
             })}
 
-            // ── Contenu principal ──────────────────────────────────────────────
             {move || {
                 if loading.get() {
                     view! {
@@ -74,7 +65,7 @@ pub fn Communiants() -> impl IntoView {
                                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                                     text-center py-16 sm:py-20 \
                                     text-gray-400 dark:text-gray-500">
-                            <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">"✝️"</div>
+                            <div class="text-4xl sm:text-5xl mb-3">"✝️"</div>
                             <p class="text-base sm:text-lg font-medium">
                                 "Aucun communiant enregistré"
                             </p>
@@ -84,9 +75,7 @@ pub fn Communiants() -> impl IntoView {
                         </div>
                     }.into_any()
                 } else {
-                    view! {
-                        <MembreTable membres=membres />
-                    }.into_any()
+                    view! { <MemberTable membres=membres /> }.into_any()
                 }
             }}
 
@@ -95,28 +84,29 @@ pub fn Communiants() -> impl IntoView {
 }
 
 #[component]
-fn MembreTable(membres: RwSignal<Vec<Membre>>) -> impl IntoView {
+fn MemberTable(membres: RwSignal<Vec<Member>>) -> impl IntoView {
     view! {
-        // Sur mobile : liste de cartes ; sur md+ : tableau
         <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                     overflow-hidden shadow-sm">
 
-            // ── Vue tableau (md et plus) ───────────────────────────────────────
+            // ── Tableau (md+) ──────────────────────────────────────────────────
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
                                    border-b border-gray-100 dark:border-gray-700">
                             <th class="text-left px-4 py-3 font-semibold \
-                                       text-gray-600 dark:text-gray-400">"Nom"</th>
+                                       text-gray-600 dark:text-gray-400">"N° Carte"</th>
                             <th class="text-left px-4 py-3 font-semibold \
-                                       text-gray-600 dark:text-gray-400">"Prénom"</th>
-                            <th class="text-left px-4 py-3 font-semibold \
-                                       text-gray-600 dark:text-gray-400">"Téléphone"</th>
+                                       text-gray-600 dark:text-gray-400">"Nom complet"</th>
                             <th class="text-left px-4 py-3 font-semibold \
                                        text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-                                "Adhésion"
+                                "Téléphone"
+                            </th>
+                            <th class="text-left px-4 py-3 font-semibold \
+                                       text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                                "Emploi"
                             </th>
                             <th class="px-4 py-3" />
                         </tr>
@@ -125,71 +115,67 @@ fn MembreTable(membres: RwSignal<Vec<Membre>>) -> impl IntoView {
                         <For
                             each=move || membres.get()
                             key=|m| m.id
-                            children=|m| view! { <MembreLigneTable membre=m /> }
+                            children=|m| view! {
+                                <tr class="border-b border-gray-50 dark:border-gray-700/50 \
+                                           hover:bg-blue-50/50 dark:hover:bg-blue-900/10 \
+                                           transition-colors duration-150">
+                                    <td class="px-4 py-3 text-xs font-mono \
+                                               text-gray-500 dark:text-gray-400">
+                                        {m.card_number.clone()}
+                                    </td>
+                                    <td class="px-4 py-3 font-medium \
+                                               text-gray-800 dark:text-white">
+                                        {m.full_name.clone()}
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-500 dark:text-gray-400 \
+                                               hidden lg:table-cell">
+                                        {m.phone.clone().unwrap_or_else(|| "—".into())}
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-500 dark:text-gray-400 \
+                                               hidden lg:table-cell">
+                                        {m.job.clone().unwrap_or_else(|| "—".into())}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button class="text-xs text-blue-600 \
+                                                       dark:text-blue-400 \
+                                                       hover:underline font-medium">
+                                            "Voir"
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
                         />
                     </tbody>
                 </table>
             </div>
 
-            // ── Vue carte (moins de md) ────────────────────────────────────────
+            // ── Cartes (mobile) ────────────────────────────────────────────────
             <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
                 <For
                     each=move || membres.get()
                     key=|m| m.id
-                    children=|m| view! { <MembreCarte membre=m /> }
+                    children=|m| view! {
+                        <div class="flex items-center justify-between px-4 py-3 \
+                                    hover:bg-blue-50/40 dark:hover:bg-blue-900/10 \
+                                    transition-colors duration-150">
+                            <div class="min-w-0">
+                                <p class="font-medium text-gray-800 dark:text-white \
+                                           text-sm truncate">
+                                    {m.full_name.clone()}
+                                </p>
+                                <p class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">
+                                    {m.card_number.clone()}
+                                </p>
+                            </div>
+                            <button class="text-xs text-blue-600 dark:text-blue-400 \
+                                           hover:underline font-medium ml-3 shrink-0">
+                                "Voir"
+                            </button>
+                        </div>
+                    }
                 />
             </div>
 
-        </div>
-    }
-}
-
-#[component]
-fn MembreLigneTable(membre: Membre) -> impl IntoView {
-    view! {
-        <tr class="border-b border-gray-50 dark:border-gray-700/50 \
-                   hover:bg-blue-50/50 dark:hover:bg-blue-900/10 \
-                   transition-colors duration-150">
-            <td class="px-4 py-3 font-medium text-gray-800 dark:text-white">
-                {membre.nom.clone()}
-            </td>
-            <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
-                {membre.prenom.clone()}
-            </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
-                {membre.telephone.clone().unwrap_or_else(|| "—".into())}
-            </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">
-                {membre.date_adhesion.clone()}
-            </td>
-            <td class="px-4 py-3 text-right">
-                <button class="text-xs text-blue-600 dark:text-blue-400 \
-                               hover:underline font-medium">
-                    "Voir"
-                </button>
-            </td>
-        </tr>
-    }
-}
-
-#[component]
-fn MembreCarte(membre: Membre) -> impl IntoView {
-    view! {
-        <div class="flex items-center justify-between px-4 py-3 \
-                    hover:bg-blue-50/40 dark:hover:bg-blue-900/10 \
-                    transition-colors duration-150">
-            <div class="min-w-0">
-                <p class="font-medium text-gray-800 dark:text-white text-sm truncate">
-                    {format!("{} {}", membre.nom, membre.prenom)}
-                </p>
-                {membre.telephone.map(|t| view! {
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t}</p>
-                })}
-            </div>
-            <button class="text-xs text-blue-600 dark:text-blue-400 \
-                           hover:underline font-medium ml-3 shrink-0">
-                "Voir"
-            </button>
         </div>
     }
 }
