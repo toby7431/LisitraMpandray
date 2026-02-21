@@ -366,6 +366,29 @@ impl Repository {
         Ok(())
     }
 
+    /// Transfère plusieurs membres vers un nouveau type (ex: "Cathekomen" → "Communiant").
+    /// Les contributions restent liées à leurs IDs — aucune perte de données.
+    pub async fn transfer_members(
+        &self,
+        ids: &[i64],
+        new_type: &str,
+    ) -> Result<usize, AppError> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+        let sql = format!(
+            "UPDATE members SET member_type = ? WHERE id IN ({})",
+            placeholders
+        );
+        let mut q = sqlx::query(&sql).bind(new_type);
+        for id in ids {
+            q = q.bind(*id);
+        }
+        let result = q.execute(&self.pool).await?;
+        Ok(result.rows_affected() as usize)
+    }
+
     // ── Contribution CRUD ─────────────────────────────────────────────────────
 
     pub async fn get_contributions(&self, member_id: i64) -> Result<Vec<Contribution>, AppError> {

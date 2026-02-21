@@ -2,7 +2,11 @@
 ///
 /// Tableau complet : N° carte, Nom, Adresse, Téléphone, Travail, Genre, Total contributions.
 /// Recherche live, tri par colonne, filtre genre, pagination, formulaire CRUD modal.
+/// Optionnel : multi-sélection + bouton "Transférer sélectionnés" (Cathécomènes → Communiants).
+use js_sys::{Function, Promise};
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
 
 use crate::{
     components::{
@@ -16,6 +20,16 @@ use crate::{
 const PAGE_SIZE: usize = 15;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async fn sleep_ms(ms: u32) {
+    let promise = Promise::new(&mut |resolve: Function, _: Function| {
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32)
+            .unwrap();
+    });
+    let _ = JsFuture::from(promise).await;
+}
 
 fn format_ariary(total_str: &str) -> String {
     let n: i64 = total_str.parse::<f64>().unwrap_or(0.0) as i64;
@@ -34,6 +48,13 @@ fn format_ariary(total_str: &str) -> String {
 fn non_empty(s: String) -> Option<String> {
     let t = s.trim().to_string();
     if t.is_empty() { None } else { Some(t) }
+}
+
+fn checked_from_event(ev: web_sys::Event) -> bool {
+    ev.target()
+        .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+        .map(|el| el.checked())
+        .unwrap_or(false)
 }
 
 // ─── Tri ──────────────────────────────────────────────────────────────────────
@@ -69,6 +90,9 @@ pub fn MemberPage(
     link_class:  &'static str,
     /// Couleur du spinner (ex: "border-blue-500")
     spin_class:  &'static str,
+    /// Si Some("Communiant") : active la multi-sélection + bouton "Transférer"
+    #[prop(optional)]
+    transfer_to: Option<&'static str>,
 ) -> impl IntoView {
 
     // ── Données ────────────────────────────────────────────────────────────────
@@ -93,17 +117,19 @@ pub fn MemberPage(
     });
 
     // ── Recherche / Filtres / Tri / Pagination ─────────────────────────────────
-    let recherche:    RwSignal<String> = RwSignal::new(String::new());
-    let filtre_genre: RwSignal<String> = RwSignal::new("Tous".into());
+    let recherche:    RwSignal<String>  = RwSignal::new(String::new());
+    let filtre_genre: RwSignal<String>  = RwSignal::new("Tous".into());
     let sort_col:     RwSignal<SortCol> = RwSignal::new(SortCol::Nom);
     let sort_dir:     RwSignal<SortDir> = RwSignal::new(SortDir::Asc);
-    let page:         RwSignal<usize>  = RwSignal::new(0);
+    let page:         RwSignal<usize>   = RwSignal::new(0);
 
-    // Reset page quand la recherche ou le filtre change
+    // Reset page + sélection quand la recherche ou le filtre change
+    let selected: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
     Effect::new(move |_| {
         let _ = recherche.get();
         let _ = filtre_genre.get();
         page.set(0);
+        selected.set(vec![]);
     });
 
     let sorted_filtered = Memo::new(move |_| {
@@ -159,6 +185,45 @@ pub fn MemberPage(
             .collect::<Vec<_>>()
     });
 
+    // ── Sélection et transfert ─────────────────────────────────────────────────
+    let transferring_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+    let transfer_modal:   RwSignal<bool>     = RwSignal::new(false);
+    let transfer_loading: RwSignal<bool>     = RwSignal::new(false);
+    let transfer_erreur:  RwSignal<Option<String>> = RwSignal::new(None);
+
+    let all_page_selected = Memo::new(move |_| {
+        let items = page_items.get();
+        !items.is_empty() && items.iter().all(|m| selected.get().contains(&m.id))
+    });
+
+    let do_transfer = move || {
+        let ids = selected.get();
+        if ids.is_empty() { return; }
+        let target = match transfer_to { Some(t) => t, None => return };
+        transfer_loading.set(true);
+        transfer_erreur.set(None);
+        // Lance l'animation immédiatement
+        transferring_ids.set(ids.clone());
+        leptos::task::spawn_local(async move {
+            // Appel DB et attente d'animation en parallèle
+            let result = db_service::transfer_members(&ids, target).await;
+            sleep_ms(400).await; // garantit que l'animation (380ms) se termine
+            match result {
+                Ok(_) => {
+                    transfer_modal.set(false);
+                    selected.set(vec![]);
+                    transferring_ids.set(vec![]);
+                    refresh_ctr.update(|n| *n += 1);
+                }
+                Err(e) => {
+                    transfer_erreur.set(Some(e));
+                    transferring_ids.set(vec![]);
+                }
+            }
+            transfer_loading.set(false);
+        });
+    };
+
     // ── Modal / Formulaire ─────────────────────────────────────────────────────
     let modal_ouvert: RwSignal<bool>        = RwSignal::new(false);
     let edit_id:      RwSignal<Option<i64>> = RwSignal::new(None);
@@ -173,10 +238,10 @@ pub fn MemberPage(
     let f_loading:   RwSignal<bool>   = RwSignal::new(false);
 
     // ── Modal Cotisation ───────────────────────────────────────────────────────
-    let contrib_open:      RwSignal<bool>   = RwSignal::new(false);
-    let contrib_membre_id: RwSignal<i64>    = RwSignal::new(0);
+    let contrib_open:       RwSignal<bool>   = RwSignal::new(false);
+    let contrib_membre_id:  RwSignal<i64>    = RwSignal::new(0);
     let contrib_membre_nom: RwSignal<String> = RwSignal::new(String::new());
-    let confetti_active:   RwSignal<bool>   = RwSignal::new(false);
+    let confetti_active:    RwSignal<bool>   = RwSignal::new(false);
 
     let reset_form = move || {
         f_carte.set(String::new());
@@ -191,7 +256,6 @@ pub fn MemberPage(
 
     let soumettre = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
-        // Le PhoneInput laisse "+261 " si vide → traiter comme None
         let phone_val = f_telephone.get();
         let phone = if phone_val.trim() == "+261" || phone_val.trim().len() <= 5 {
             None
@@ -243,15 +307,37 @@ pub fn MemberPage(
                         {subtitle}
                     </p>
                 </div>
-                <button
-                    on:click=move |_| { reset_form(); modal_ouvert.set(true); }
-                    class=format!("px-3 sm:px-4 py-2 {} text-white rounded-xl \
-                                   text-xs sm:text-sm font-semibold transition-colors \
-                                   duration-200 flex items-center gap-1.5 shrink-0 \
-                                   shadow-sm", btn_class)
-                >
-                    "➕ Nouveau membre"
-                </button>
+                // Boutons d'action groupés
+                <div class="flex items-center gap-2 flex-wrap shrink-0">
+                    // Bouton "Transférer" — visible seulement si sélection non vide
+                    {move || {
+                        if transfer_to.is_none() { return None; }
+                        let n = selected.get().len();
+                        if n == 0 { return None; }
+                        Some(view! {
+                            <button
+                                on:click=move |_| transfer_modal.set(true)
+                                class="px-3 py-2 text-xs sm:text-sm font-semibold text-white \
+                                       bg-amber-500 hover:bg-amber-600 \
+                                       rounded-xl transition-colors duration-200 \
+                                       flex items-center gap-1.5 shadow-sm \
+                                       animate-pulse-once"
+                            >
+                                "✝️ "
+                                {format!("Transférer ({n})")}
+                            </button>
+                        })
+                    }}
+                    <button
+                        on:click=move |_| { reset_form(); modal_ouvert.set(true); }
+                        class=format!("px-3 sm:px-4 py-2 {} text-white rounded-xl \
+                                       text-xs sm:text-sm font-semibold transition-colors \
+                                       duration-200 flex items-center gap-1.5 shadow-sm",
+                                       btn_class)
+                    >
+                        "➕ Nouveau membre"
+                    </button>
+                </div>
             </div>
 
             // ── Barre de recherche + filtres ───────────────────────────────────
@@ -293,6 +379,19 @@ pub fn MemberPage(
                         format!("{n} membre{}", if n > 1 { "s" } else { "" })
                     }}
                 </span>
+                // Compteur de sélection
+                {move || {
+                    if transfer_to.is_none() { return None; }
+                    let n = selected.get().len();
+                    if n == 0 { return None; }
+                    Some(view! {
+                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 \
+                                     bg-amber-50 dark:bg-amber-900/30 \
+                                     px-2 py-1 rounded-lg whitespace-nowrap">
+                            {format!("{n} sélectionné{}", if n > 1 { "s" } else { "" })}
+                        </span>
+                    })
+                }}
             </div>
 
             // ── Bannière d'erreur ──────────────────────────────────────────────
@@ -342,6 +441,33 @@ pub fn MemberPage(
                                             <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
                                                        border-b border-gray-100 dark:border-gray-700 \
                                                        text-gray-600 dark:text-gray-400 font-semibold">
+                                                // ── Colonne checkbox (seulement si transfer_to)
+                                                {transfer_to.map(|_| view! {
+                                                    <th class="pl-4 pr-2 py-3 w-10">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="custom-check"
+                                                            title="Tout sélectionner"
+                                                            prop:checked=move || all_page_selected.get()
+                                                            on:change=move |ev: web_sys::Event| {
+                                                                let checked = checked_from_event(ev);
+                                                                let items   = page_items.get();
+                                                                selected.update(|s| {
+                                                                    if checked {
+                                                                        for m in &items {
+                                                                            if !s.contains(&m.id) {
+                                                                                s.push(m.id);
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
+                                                                        s.retain(|id| !ids.contains(id));
+                                                                    }
+                                                                });
+                                                            }
+                                                        />
+                                                    </th>
+                                                })}
                                                 <Th label="N° Carte" col=SortCol::Carte sort_col=sort_col sort_dir=sort_dir />
                                                 <Th label="Nom complet" col=SortCol::Nom sort_col=sort_col sort_dir=sort_dir />
                                                 <Th label="Adresse" col=SortCol::Adresse sort_col=sort_col sort_dir=sort_dir />
@@ -363,10 +489,35 @@ pub fn MemberPage(
                                                     let genre_label = if m.gender == "M" { "♂ Homme" } else { "♀ Femme" };
 
                                                     view! {
-                                                        <tr class=format!(
-                                                            "border-b border-gray-50 dark:border-gray-700/50 \
-                                                             {} transition-colors duration-100", row_hover
-                                                        )>
+                                                        <tr class=move || {
+                                                            let sliding = transferring_ids.get().contains(&mid);
+                                                            format!(
+                                                                "border-b border-gray-50 dark:border-gray-700/50 \
+                                                                 {} transition-colors duration-100{}",
+                                                                row_hover,
+                                                                if sliding { " row-sliding-out" } else { "" }
+                                                            )
+                                                        }>
+                                                            // ── Checkbox (seulement si transfer_to)
+                                                            {transfer_to.map(|_| view! {
+                                                                <td class="pl-4 pr-2 py-2.5">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        class="custom-check"
+                                                                        prop:checked=move || selected.get().contains(&mid)
+                                                                        on:change=move |ev: web_sys::Event| {
+                                                                            let checked = checked_from_event(ev);
+                                                                            selected.update(|s| {
+                                                                                if checked {
+                                                                                    if !s.contains(&mid) { s.push(mid); }
+                                                                                } else {
+                                                                                    s.retain(|&id| id != mid);
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    />
+                                                                </td>
+                                                            })}
                                                             <td class="px-3 py-2.5 font-mono text-xs \
                                                                        text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                                                 {m.card_number.clone()}
@@ -513,23 +664,19 @@ pub fn MemberPage(
                 let modal_title = if is_edit { "Modifier le membre" } else { "Nouveau membre" };
 
                 view! {
-                    // Overlay
                     <div
                         class="fixed inset-0 z-50 flex items-center justify-center p-4 \
                                bg-black/40 dark:bg-black/60 backdrop-blur-sm"
                         on:click=move |ev| {
-                            // Ferme si clic sur l'overlay (pas sur le panneau)
                             if ev.target() == ev.current_target() {
                                 modal_ouvert.set(false);
                             }
                         }
                     >
-                        // Panneau
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
                                     w-full max-w-lg max-h-[90vh] overflow-y-auto \
                                     border border-gray-100 dark:border-gray-700">
 
-                            // En-tête modal
                             <div class="flex items-center justify-between px-6 pt-5 pb-4 \
                                         border-b border-gray-100 dark:border-gray-700">
                                 <h2 class="text-base font-bold text-gray-800 dark:text-white">
@@ -545,10 +692,7 @@ pub fn MemberPage(
                                 </button>
                             </div>
 
-                            // Formulaire
                             <form on:submit=soumettre class="px-6 py-5 space-y-4">
-
-                                // N° carte + Genre (côte à côte)
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class=LABEL>"N° carte *"</label>
@@ -573,7 +717,6 @@ pub fn MemberPage(
                                     </div>
                                 </div>
 
-                                // Nom complet
                                 <div>
                                     <label class=LABEL>"Nom complet *"</label>
                                     <input
@@ -585,7 +728,6 @@ pub fn MemberPage(
                                     />
                                 </div>
 
-                                // Adresse
                                 <div>
                                     <label class=LABEL>"Adresse"</label>
                                     <input
@@ -597,13 +739,11 @@ pub fn MemberPage(
                                     />
                                 </div>
 
-                                // Téléphone
                                 <div>
                                     <label class=LABEL>"Téléphone"</label>
                                     <PhoneInput value=f_telephone class=INPUT />
                                 </div>
 
-                                // Travail
                                 <div>
                                     <label class=LABEL>"Travail / Emploi"</label>
                                     <input
@@ -615,7 +755,6 @@ pub fn MemberPage(
                                     />
                                 </div>
 
-                                // Erreur formulaire
                                 {move || f_erreur.get().map(|e| view! {
                                     <div class="p-3 bg-red-50 dark:bg-red-900/30 \
                                                 border border-red-200 dark:border-red-700 \
@@ -624,7 +763,6 @@ pub fn MemberPage(
                                     </div>
                                 })}
 
-                                // Boutons
                                 <div class="flex gap-3 justify-end pt-1">
                                     <button
                                         type="button"
@@ -653,6 +791,91 @@ pub fn MemberPage(
                     </div>
                 }
             })}
+
+            // ── Modal de transfert ─────────────────────────────────────────────
+            {move || {
+                if transfer_to.is_none() || !transfer_modal.get() { return None; }
+                let n           = selected.get().len();
+                let target_name = transfer_to.unwrap_or("Communiant");
+                Some(view! {
+                    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 \
+                                bg-black/40 dark:bg-black/60 backdrop-blur-sm">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
+                                    w-full max-w-sm border border-gray-100 dark:border-gray-700 \
+                                    overflow-hidden">
+                            // En-tête coloré
+                            <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-1">"✝️"</div>
+                                    <h2 class="text-base font-bold text-white">
+                                        "Confirmer le transfert"
+                                    </h2>
+                                </div>
+                            </div>
+                            // Corps
+                            <div class="px-6 py-5 space-y-4">
+                                <p class="text-sm text-gray-700 dark:text-gray-300 text-center">
+                                    {format!(
+                                        "Transférer {n} membre{} vers les {}s ?",
+                                        if n > 1 { "s" } else { "" },
+                                        target_name
+                                    )}
+                                </p>
+                                <div class="flex items-start gap-2 p-3 \
+                                            bg-amber-50 dark:bg-amber-900/20 \
+                                            border border-amber-200 dark:border-amber-700/50 \
+                                            rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                                    <span class="shrink-0">"ℹ️"</span>
+                                    <span>
+                                        "Les contributions restent liées à ces membres — \
+                                         leur historique est préservé."
+                                    </span>
+                                </div>
+                                {move || transfer_erreur.get().map(|e| view! {
+                                    <div class="p-3 bg-red-50 dark:bg-red-900/30 \
+                                                border border-red-200 dark:border-red-700 \
+                                                rounded-xl text-red-700 dark:text-red-300 \
+                                                text-xs text-center">
+                                        "⚠️ " {e}
+                                    </div>
+                                })}
+                                <div class="flex gap-3">
+                                    <button
+                                        type="button"
+                                        disabled=move || transfer_loading.get()
+                                        on:click=move |_| {
+                                            transfer_modal.set(false);
+                                            transfer_erreur.set(None);
+                                        }
+                                        class="flex-1 px-4 py-2.5 text-sm font-medium \
+                                               text-gray-600 dark:text-gray-300 \
+                                               bg-gray-100 dark:bg-gray-700 \
+                                               hover:bg-gray-200 dark:hover:bg-gray-600 \
+                                               disabled:opacity-50 rounded-xl transition-colors"
+                                    >
+                                        "Annuler"
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled=move || transfer_loading.get()
+                                        on:click=move |_| do_transfer()
+                                        class="flex-1 px-4 py-2.5 text-sm font-semibold \
+                                               text-white bg-amber-500 hover:bg-amber-600 \
+                                               disabled:opacity-60 disabled:cursor-wait \
+                                               rounded-xl transition-colors shadow-sm"
+                                    >
+                                        {move || if transfer_loading.get() {
+                                            "Transfert en cours…"
+                                        } else {
+                                            "✝️ Confirmer"
+                                        }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                })
+            }}
 
             // ── Modal cotisation ───────────────────────────────────────────────
             {move || {

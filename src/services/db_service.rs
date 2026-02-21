@@ -95,6 +95,16 @@ pub async fn delete_member(id: i64) -> Result<(), String> {
     Ok(())
 }
 
+/// Transfère une liste de membres vers un nouveau type (ex: "Communiant").
+pub async fn transfer_members(ids: &[i64], new_type: &str) -> Result<usize, String> {
+    let res = invoke(
+        "transfer_members",
+        to_js(&serde_json::json!({ "ids": ids, "newType": new_type })),
+    )
+    .await?;
+    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+}
+
 // ─── Contribution ─────────────────────────────────────────────────────────────
 
 pub async fn get_contributions(member_id: i64) -> Result<Vec<Contribution>, String> {

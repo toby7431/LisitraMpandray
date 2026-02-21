@@ -13,6 +13,7 @@ pub fn Cathekomens() -> impl IntoView {
             row_hover="hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10"
             link_class="text-emerald-600 dark:text-emerald-400"
             spin_class="border-emerald-500"
+            transfer_to="Communiant"
         />
     }
 }

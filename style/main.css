@@ -313,6 +313,67 @@ html.dark .verse-ref {
   75%     { margin-left: -18px; }
 }
 
+/* ─── Checkbox personnalisée ────────────────────────────────────────────────── */
+.custom-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.custom-check:hover {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+.custom-check:checked {
+  background: #10b981;
+  border-color: #10b981;
+}
+.custom-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+html.dark .custom-check {
+  background: #374151;
+  border-color: #4b5563;
+}
+html.dark .custom-check:hover {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20);
+}
+html.dark .custom-check:checked {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+/* ─── Animation glissement ligne transférée ─────────────────────────────────── */
+@keyframes row-slide-out {
+  0%   { transform: translateX(0);     opacity: 1; background: transparent; }
+  25%  { background: rgba(245, 158, 11, 0.12); }
+  100% { transform: translateX(110%);  opacity: 0; }
+}
+.row-sliding-out {
+  animation: row-slide-out 0.38s cubic-bezier(0.4, 0, 0.8, 0.6) forwards;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 /* ─── Transitions globales ─────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;

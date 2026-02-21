@@ -134,6 +134,15 @@ async fn reopen_year(
     state.reopen_year(year).await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn transfer_members(
+    state: tauri::State<'_, Repository>,
+    ids: Vec<i64>,
+    new_type: String,
+) -> Result<usize, String> {
+    state.transfer_members(&ids, &new_type).await.map_err(|e| e.to_string())
+}
+
 // ─── Point d'entrée ───────────────────────────────────────────────────────────
 
 pub fn run() {
@@ -180,6 +189,8 @@ pub fn run() {
             get_year_summary,
             close_year,
             reopen_year,
+            // Transfer
+            transfer_members,
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors du lancement de Tauri");
