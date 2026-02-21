@@ -278,6 +278,12 @@ pub fn SkyCanvas() -> impl IntoView {
     });
 
     view! {
-        <canvas id="sky-canvas" node_ref=canvas_ref />
+        // Style inline = priorité maximale — garantit position:fixed même si main.css
+        // charge après le premier rendu WASM (évite que le canvas prenne 100vh dans le flux).
+        <canvas
+            id="sky-canvas"
+            node_ref=canvas_ref
+            style="position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;"
+        />
     }
 }

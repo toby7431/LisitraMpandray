@@ -125,13 +125,16 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            // Ciel en arrière-plan (canvas fixe)
+            // ── Couche 0 : ciel animé (fixed, derrière tout) ──────────────────
             <SkyCanvas />
 
-            // Couche contenu
-            <div class="relative z-10 flex flex-col min-h-screen">
+            // ── Couche 1 : contenu (fixed aussi, scrollable, au-dessus du ciel)
+            // On utilise position:fixed + overflow-y:auto pour que le contenu
+            // flotte au-dessus du canvas sans jamais le pousser vers le bas.
+            <div style="position:fixed;inset:0;z-index:10;overflow-y:auto;"
+                 class="flex flex-col min-h-full">
                 <Navbar />
-                <main class="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+                <main class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl w-full">
                     <Routes fallback=|| {
                         view! {
                             <p class="text-center text-gray-500 dark:text-gray-400 mt-20 text-lg">

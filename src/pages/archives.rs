@@ -28,20 +28,21 @@ pub fn Archives() -> impl IntoView {
     Effect::new(move |_| charger());
 
     view! {
-        <div class="animate-fade-in space-y-6">
+        <div class="animate-fade-in space-y-4 sm:space-y-6">
 
             <div>
-                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
                     "📦 Archives"
                 </h1>
-                <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
                     "Membres archivés (inactifs ou partis)"
                 </p>
             </div>
 
             {move || erreur.get().map(|e| view! {
-                <div class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 \
-                            dark:border-red-700 rounded-xl text-red-700 dark:text-red-300 text-sm">
+                <div class="p-3 sm:p-4 bg-red-50 dark:bg-red-900/30 \
+                            border border-red-200 dark:border-red-700 \
+                            rounded-xl text-red-700 dark:text-red-300 text-sm">
                     "⚠️ " {e}
                 </div>
             })}
@@ -56,10 +57,13 @@ pub fn Archives() -> impl IntoView {
                     }.into_any()
                 } else if membres.get().is_empty() {
                     view! {
-                        <div class="text-center py-20 text-gray-400 dark:text-gray-500">
-                            <div class="text-5xl mb-4">"📦"</div>
-                            <p class="text-lg font-medium">"Aucune archive"</p>
-                            <p class="text-sm mt-1">
+                        <div class="bg-white/60 dark:bg-gray-800/60 backdrop-blur \
+                                    rounded-2xl border border-gray-100 dark:border-gray-700 \
+                                    text-center py-16 sm:py-20 \
+                                    text-gray-400 dark:text-gray-500">
+                            <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">"📦"</div>
+                            <p class="text-base sm:text-lg font-medium">"Aucune archive"</p>
+                            <p class="text-xs sm:text-sm mt-1">
                                 "Les membres archivés apparaîtront ici."
                             </p>
                         </div>
@@ -69,70 +73,114 @@ pub fn Archives() -> impl IntoView {
                         <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                                     overflow-hidden shadow-sm">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="bg-gray-50 dark:bg-gray-900/50 \
-                                               border-b border-gray-100 dark:border-gray-700">
-                                        <th class="text-left px-4 py-3 font-semibold \
-                                                   text-gray-600 dark:text-gray-400">"Nom"</th>
-                                        <th class="text-left px-4 py-3 font-semibold \
-                                                   text-gray-600 dark:text-gray-400">"Prénom"</th>
-                                        <th class="text-left px-4 py-3 font-semibold \
-                                                   text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                                            "Type"
-                                        </th>
-                                        <th class="text-left px-4 py-3 font-semibold \
-                                                   text-gray-600 dark:text-gray-400 hidden md:table-cell">
-                                            "Adhésion"
-                                        </th>
-                                        <th class="px-4 py-3" />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <For
-                                        each=move || membres.get()
-                                        key=|m| m.id
-                                        children=|m| view! {
-                                            <tr class="border-b border-gray-50 \
-                                                       dark:border-gray-700/50 \
-                                                       hover:bg-gray-50/80 \
-                                                       dark:hover:bg-gray-700/30 \
-                                                       transition-colors duration-150 opacity-75">
-                                                <td class="px-4 py-3 font-medium \
-                                                           text-gray-700 dark:text-gray-200">
-                                                    {m.nom}
-                                                </td>
-                                                <td class="px-4 py-3 text-gray-500 \
-                                                           dark:text-gray-400">
-                                                    {m.prenom}
-                                                </td>
-                                                <td class="px-4 py-3 text-gray-500 \
-                                                           dark:text-gray-400 hidden sm:table-cell">
-                                                    <span class="px-2 py-0.5 rounded-full text-xs \
-                                                                 bg-gray-100 dark:bg-gray-700 \
-                                                                 text-gray-600 dark:text-gray-300">
-                                                        {m.type_membre}
-                                                    </span>
-                                                </td>
-                                                <td class="px-4 py-3 text-gray-500 \
-                                                           dark:text-gray-400 hidden md:table-cell">
-                                                    {m.date_adhesion}
-                                                </td>
-                                                <td class="px-4 py-3 text-right">
-                                                    <button class="text-xs text-gray-500 \
-                                                                   dark:text-gray-400 \
-                                                                   hover:text-blue-600 \
-                                                                   dark:hover:text-blue-400 \
-                                                                   hover:underline font-medium \
-                                                                   transition-colors duration-150">
-                                                        "Restaurer"
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    />
-                                </tbody>
-                            </table>
+
+                            // ── Tableau (md+) ──────────────────────────────────
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
+                                                   border-b border-gray-100 dark:border-gray-700">
+                                            <th class="text-left px-4 py-3 font-semibold \
+                                                       text-gray-600 dark:text-gray-400">"Nom"</th>
+                                            <th class="text-left px-4 py-3 font-semibold \
+                                                       text-gray-600 dark:text-gray-400">"Prénom"</th>
+                                            <th class="text-left px-4 py-3 font-semibold \
+                                                       text-gray-600 dark:text-gray-400">"Type"</th>
+                                            <th class="text-left px-4 py-3 font-semibold \
+                                                       text-gray-600 dark:text-gray-400 \
+                                                       hidden lg:table-cell">
+                                                "Adhésion"
+                                            </th>
+                                            <th class="px-4 py-3" />
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <For
+                                            each=move || membres.get()
+                                            key=|m| m.id
+                                            children=|m| view! {
+                                                <tr class="border-b border-gray-50 \
+                                                           dark:border-gray-700/50 \
+                                                           hover:bg-gray-50/80 \
+                                                           dark:hover:bg-gray-700/30 \
+                                                           transition-colors duration-150 \
+                                                           opacity-75">
+                                                    <td class="px-4 py-3 font-medium \
+                                                               text-gray-700 dark:text-gray-200">
+                                                        {m.nom}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-500 \
+                                                               dark:text-gray-400">
+                                                        {m.prenom}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-500 \
+                                                               dark:text-gray-400">
+                                                        <span class="px-2 py-0.5 rounded-full \
+                                                                     text-xs bg-gray-100 \
+                                                                     dark:bg-gray-700 \
+                                                                     text-gray-600 \
+                                                                     dark:text-gray-300">
+                                                            {m.type_membre}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-500 \
+                                                               dark:text-gray-400 \
+                                                               hidden lg:table-cell">
+                                                        {m.date_adhesion}
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right">
+                                                        <button class="text-xs text-gray-500 \
+                                                                       dark:text-gray-400 \
+                                                                       hover:text-blue-600 \
+                                                                       dark:hover:text-blue-400 \
+                                                                       hover:underline font-medium \
+                                                                       transition-colors duration-150">
+                                                            "Restaurer"
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        />
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            // ── Cartes (mobile) ────────────────────────────────
+                            <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                                <For
+                                    each=move || membres.get()
+                                    key=|m| m.id
+                                    children=|m| view! {
+                                        <div class="flex items-center justify-between px-4 py-3 \
+                                                    opacity-75 hover:bg-gray-50/60 \
+                                                    dark:hover:bg-gray-700/20 \
+                                                    transition-colors duration-150">
+                                            <div class="min-w-0">
+                                                <p class="font-medium text-gray-700 \
+                                                           dark:text-gray-200 text-sm truncate">
+                                                    {format!("{} {}", m.nom, m.prenom)}
+                                                </p>
+                                                <span class="inline-block mt-1 px-2 py-0.5 \
+                                                             rounded-full text-xs \
+                                                             bg-gray-100 dark:bg-gray-700 \
+                                                             text-gray-600 dark:text-gray-300">
+                                                    {m.type_membre}
+                                                </span>
+                                            </div>
+                                            <button class="text-xs text-gray-500 \
+                                                           dark:text-gray-400 \
+                                                           hover:text-blue-600 \
+                                                           dark:hover:text-blue-400 \
+                                                           hover:underline font-medium \
+                                                           ml-3 shrink-0 \
+                                                           transition-colors duration-150">
+                                                "Restaurer"
+                                            </button>
+                                        </div>
+                                    }
+                                />
+                            </div>
+
                         </div>
                     }.into_any()
                 }

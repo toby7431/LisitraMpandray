@@ -16,14 +16,13 @@ struct Tab {
 }
 
 const TABS: &[Tab] = &[
-    Tab { label: "Accueil",       path: "/",             icon: "🏠" },
-    Tab { label: "Communiants",   path: "/communiants",  icon: "✝️"  },
-    Tab { label: "Cathécomènes",  path: "/cathekomens",  icon: "📖" },
-    Tab { label: "Archives",      path: "/archives",     icon: "📦" },
+    Tab { label: "Accueil",      path: "/",            icon: "🏠" },
+    Tab { label: "Communiants",  path: "/communiants", icon: "✝️"  },
+    Tab { label: "Cathécomènes", path: "/cathekomens", icon: "📖" },
+    Tab { label: "Archives",     path: "/archives",    icon: "📦" },
 ];
 
 fn active_index(pathname: &str) -> usize {
-    // Correspondance exacte pour "/" pour éviter les faux positifs
     TABS.iter()
         .position(|t| {
             if t.path == "/" {
@@ -47,24 +46,25 @@ pub fn Navbar() -> impl IntoView {
                        backdrop-blur-md \
                        border-b border-gray-200 dark:border-gray-700 \
                        shadow-sm">
-            <div class="container mx-auto px-4 max-w-6xl">
-                <div class="flex items-center justify-between h-16">
+            <div class="container mx-auto px-3 sm:px-4 max-w-6xl">
+                <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
 
-                    // ── Logo / Titre ───────────────────────────────────────
-                    <div class="flex items-center gap-3 shrink-0">
-                        <span class="text-2xl" aria-hidden="true">"⛪"</span>
-                        <div class="leading-tight">
-                            <p class="font-bold text-gray-800 dark:text-white text-sm sm:text-base">
+                    // ── Logo / Titre ───────────────────────────────────────────
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xl sm:text-2xl" aria-hidden="true">"⛪"</span>
+                        <div class="leading-tight hidden xs:block sm:block">
+                            <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
                                 "Église Gestion"
                             </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
                                 "Madagascar"
                             </p>
                         </div>
                     </div>
 
-                    // ── Onglets ───────────────────────────────────────────
-                    <nav class="relative flex" aria-label="Navigation principale">
+                    // ── Onglets ────────────────────────────────────────────────
+                    <nav class="relative flex overflow-x-auto scrollbar-none flex-1 justify-center"
+                         aria-label="Navigation principale">
                         {TABS
                             .iter()
                             .enumerate()
@@ -76,8 +76,9 @@ pub fn Navbar() -> impl IntoView {
                                     <A
                                         href=path
                                         attr:class=move || {
-                                            let base = "flex items-center gap-1.5 px-3 sm:px-5 py-5 \
-                                                        text-sm font-medium transition-colors duration-200";
+                                            let base = "flex items-center gap-1 px-2 sm:px-4 py-4 sm:py-5 \
+                                                        text-xs sm:text-sm font-medium transition-colors \
+                                                        duration-200 whitespace-nowrap shrink-0";
                                             if idx.get() == i {
                                                 format!("{base} text-blue-600 dark:text-blue-400")
                                             } else {
@@ -86,16 +87,16 @@ pub fn Navbar() -> impl IntoView {
                                             }
                                         }
                                     >
-                                        <span class="text-base leading-none hidden sm:inline">{icon}</span>
-                                        <span>{label}</span>
+                                        // Icône toujours visible
+                                        <span class="text-base leading-none">{icon}</span>
+                                        // Label masqué sur mobile, visible à partir de sm
+                                        <span class="hidden sm:inline">{label}</span>
                                     </A>
                                 }
                             })
                             .collect_view()}
 
-                        // ── Indicateur glissant ───────────────────────────
-                        // Largeur = 25% du conteneur (100% / 4 onglets)
-                        // translateX(n × 100%) déplace de n × 25% du parent
+                        // ── Indicateur glissant ────────────────────────────────
                         <div
                             class="nav-indicator"
                             style=move || {
@@ -104,8 +105,10 @@ pub fn Navbar() -> impl IntoView {
                         />
                     </nav>
 
-                    // ── Sélecteur de thème ────────────────────────────────
-                    <ThemeSwitcher />
+                    // ── Sélecteur de thème ─────────────────────────────────────
+                    <div class="shrink-0">
+                        <ThemeSwitcher />
+                    </div>
 
                 </div>
             </div>
