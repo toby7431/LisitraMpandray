@@ -1,0 +1,37 @@
+# ── Rust / Cargo ────────────────────────────────────────────────────────────
+/target/
+src-tauri/target/
+**/*.rs.bk
+
+# ── Trunk (WASM build output) ───────────────────────────────────────────────
+/dist/
+
+# ── SQLite (données locales) ─────────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# ── Variables d'environnement ────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Claude Code (mémoire interne de l'assistant) ─────────────────────────────
+.claude/
+
+# ── Éditeurs / IDE ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Node (si utilisé pour Tailwind CLI) ─────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*

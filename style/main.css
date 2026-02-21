@@ -1,0 +1,42 @@
+/* ─── Indicateur navbar glissant avec rebond cubic-bezier ──────────────────── */
+.nav-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 9999px 9999px 0 0;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  /* Largeur = 100% / nombre_d_onglets (4) */
+  width: 25%;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+html.dark .nav-indicator {
+  background: linear-gradient(90deg, #60a5fa, #818cf8);
+}
+
+/* ─── Canvas ciel (arrière-plan fixe) ──────────────────────────────────────── */
+#sky-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -10;
+  pointer-events: none;
+}
+
+/* ─── Scrollbar personnalisée ───────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 9999px; }
+html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* ─── Transitions globales ─────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

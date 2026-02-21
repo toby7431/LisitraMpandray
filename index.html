@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Église Gestion</title>
+
+  <!--
+    Tailwind CSS via CDN pour le développement.
+    Pour la production, remplacer par la compilation locale :
+      npx tailwindcss -i style/input.css -o dist/style.css --minify
+    et utiliser : <link data-trunk rel="tailwind-css" href="style/input.css" />
+  -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          transitionTimingFunction: {
+            'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%':   { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.35s ease-out both',
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Police Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- CSS custom (animations indicateur navbar, etc.) -->
+  <link data-trunk rel="copy-file" href="style/main.css" />
+  <link rel="stylesheet" href="style/main.css" />
+
+  <!-- Entrée WASM Leptos -->
+  <link data-trunk rel="rust" data-wasm-opt="z" />
+</head>
+<body class="bg-transparent font-sans"></body>
+</html>

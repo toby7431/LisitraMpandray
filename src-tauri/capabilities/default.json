@@ -1,0 +1,8 @@
+{
+  "identifier": "default",
+  "description": "Capacités par défaut pour la fenêtre principale",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}
