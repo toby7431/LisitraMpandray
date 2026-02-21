@@ -329,52 +329,37 @@ fn draw_sun(ctx: &CanvasRenderingContext2d, w: f64, h: f64, t: f64, a: f64) {
     ctx.save();
     ctx.set_global_alpha(a);
 
-    // ── Corona extérieure (très subtile, lente) ──────────────────────────────
-    let gx = ctx.create_radial_gradient(sx, sy, r, sx, sy, r * 13.0 * p2);
+    // ── Reflet large et diffus (lumière solaire dans le ciel) ────────────────
+    let gx = ctx.create_radial_gradient(sx, sy, 0.0, sx, sy, r * 14.0 * p2);
     if let Ok(g) = gx {
-        let _ = g.add_color_stop(0.0, "rgba(255,248,150,0.09)");
-        let _ = g.add_color_stop(0.5, "rgba(255,220, 90,0.03)");
-        let _ = g.add_color_stop(1.0, "rgba(255,200, 50,0)");
+        let _ = g.add_color_stop(0.0,  "rgba(255,250,200,0.18)");
+        let _ = g.add_color_stop(0.40, "rgba(255,235,150,0.07)");
+        let _ = g.add_color_stop(0.75, "rgba(255,220,100,0.02)");
+        let _ = g.add_color_stop(1.0,  "rgba(255,200, 50,0)");
         fill_grad(ctx, &g);
         ctx.begin_path();
-        let _ = ctx.arc(sx, sy, r * 13.0 * p2, 0.0, TAU);
+        let _ = ctx.arc(sx, sy, r * 14.0 * p2, 0.0, TAU);
         ctx.fill();
     }
 
-    // ── Halo intermédiaire (chaud, pulse rapide) ─────────────────────────────
-    let gx = ctx.create_radial_gradient(sx, sy, r * 0.85, sx, sy, r * 5.8 * p1);
+    // ── Lueur douce proche (aureole subtile) ─────────────────────────────────
+    let gx = ctx.create_radial_gradient(sx, sy, 0.0, sx, sy, r * 3.5 * p1);
     if let Ok(g) = gx {
-        let _ = g.add_color_stop(0.00, "rgba(255,255,210,0.62)");
-        let _ = g.add_color_stop(0.38, "rgba(255,238,130,0.28)");
-        let _ = g.add_color_stop(0.75, "rgba(255,215, 80,0.07)");
-        let _ = g.add_color_stop(1.0,  "rgba(255,190, 50,0)");
+        let _ = g.add_color_stop(0.0,  "rgba(255,255,230,0.22)");
+        let _ = g.add_color_stop(0.55, "rgba(255,245,180,0.08)");
+        let _ = g.add_color_stop(1.0,  "rgba(255,230,120,0)");
         fill_grad(ctx, &g);
         ctx.begin_path();
-        let _ = ctx.arc(sx, sy, r * 5.8 * p1, 0.0, TAU);
+        let _ = ctx.arc(sx, sy, r * 3.5 * p1, 0.0, TAU);
         ctx.fill();
     }
 
-    // ── Lueur intérieure (blanc-jaune) ───────────────────────────────────────
-    let gx = ctx.create_radial_gradient(sx, sy, 0.0, sx, sy, r * 2.4);
+    // ── Disque solaire quasi-invisible — juste une tache claire ──────────────
+    let gx = ctx.create_radial_gradient(sx, sy, 0.0, sx, sy, r);
     if let Ok(g) = gx {
-        let _ = g.add_color_stop(0.0,  "rgba(255,255,255,0.98)");
-        let _ = g.add_color_stop(0.52, "rgba(255,255,215,0.80)");
-        let _ = g.add_color_stop(1.0,  "rgba(255,248,150,0)");
-        fill_grad(ctx, &g);
-        ctx.begin_path();
-        let _ = ctx.arc(sx, sy, r * 2.4, 0.0, TAU);
-        ctx.fill();
-    }
-
-    // ── Disque solaire ───────────────────────────────────────────────────────
-    let gx = ctx.create_radial_gradient(
-        sx - r * 0.22, sy - r * 0.22, r * 0.06,
-        sx, sy, r,
-    );
-    if let Ok(g) = gx {
-        let _ = g.add_color_stop(0.0,  "#fffef2");
-        let _ = g.add_color_stop(0.55, "#fffbc2");
-        let _ = g.add_color_stop(1.0,  "#ffe060");
+        let _ = g.add_color_stop(0.0,  "rgba(255,255,255,0.28)");
+        let _ = g.add_color_stop(0.60, "rgba(255,252,210,0.10)");
+        let _ = g.add_color_stop(1.0,  "rgba(255,240,160,0)");
         fill_grad(ctx, &g);
         ctx.begin_path();
         let _ = ctx.arc(sx, sy, r, 0.0, TAU);
