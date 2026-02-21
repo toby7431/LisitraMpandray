@@ -33,6 +33,29 @@ html.dark .nav-indicator {
 ::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 9999px; }
 html.dark ::-webkit-scrollbar-thumb { background: #475569; }
 
+/* ─── Verset du jour — glissement de gauche + lueur ─────────────────────────── */
+@keyframes verse-slide-glow {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+    text-shadow: none;
+  }
+  65% {
+    opacity: 1;
+    transform: translateX(6px);
+    text-shadow: 0 0 22px rgba(99, 102, 241, 0.55);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    text-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+  }
+}
+
+.verse-animate {
+  animation: verse-slide-glow 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* ─── Transitions globales ─────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
