@@ -6,7 +6,7 @@ use leptos_router::{
 use web_sys::window;
 
 use crate::{
-    components::{navbar::Navbar, sky_canvas::SkyCanvas, year_toast::YearToast},
+    components::{navbar::Navbar, sky_canvas::SkyCanvas, titlebar::TitleBar, year_toast::YearToast},
     models::year_summary::YearSummary,
     pages::{
         accueil::Accueil, archives::Archives, cathekomens::Cathekomens,
@@ -173,8 +173,11 @@ pub fn App() -> impl IntoView {
             // ── Couche 0 : ciel animé (fixed, derrière tout) ──────────────────
             <SkyCanvas />
 
-            // ── Couche 1 : contenu (fixed aussi, scrollable, au-dessus du ciel)
-            <div style="position:fixed;inset:0;z-index:10;overflow-y:auto;"
+            // ── Couche 1 : barre de titre personnalisée ───────────────────────
+            <TitleBar />
+
+            // ── Couche 2 : contenu scrollable (démarre sous la titlebar) ──────
+            <div style="position:fixed;top:36px;left:0;right:0;bottom:0;z-index:10;overflow-y:auto;"
                  class="flex flex-col min-h-full">
                 <Navbar />
                 <main class="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl w-full">

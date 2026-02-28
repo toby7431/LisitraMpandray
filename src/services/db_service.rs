@@ -199,3 +199,18 @@ pub async fn check_and_close_previous_year() -> Result<Option<YearSummary>, Stri
     .await?;
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
+
+
+// ─── Fenêtre ──────────────────────────────────────────────────────────────────
+
+pub async fn minimize_window() -> Result<(), String> {
+    invoke("minimize_window", JsValue::NULL).await.map(|_| ())
+}
+
+pub async fn toggle_maximize() -> Result<(), String> {
+    invoke("toggle_maximize", JsValue::NULL).await.map(|_| ())
+}
+
+pub async fn close_window() -> Result<(), String> {
+    invoke("close_window", JsValue::NULL).await.map(|_| ())
+}

@@ -5,4 +5,5 @@ pub mod navbar;
 pub mod phone_input;
 pub mod sky_canvas;
 pub mod theme_switcher;
+pub mod titlebar;
 pub mod year_toast;

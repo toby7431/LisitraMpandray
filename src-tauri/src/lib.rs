@@ -166,6 +166,36 @@ async fn check_and_close_previous_year(
         .map_err(|e| e.to_string())
 }
 
+// ─── Commandes fenêtre ────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn minimize_window(app: tauri::AppHandle) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "Fenêtre introuvable".to_string())?
+        .minimize()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn toggle_maximize(app: tauri::AppHandle) -> Result<(), String> {
+    let win = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Fenêtre introuvable".to_string())?;
+    if win.is_maximized().map_err(|e| e.to_string())? {
+        win.unmaximize().map_err(|e| e.to_string())
+    } else {
+        win.maximize().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+async fn close_window(app: tauri::AppHandle) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "Fenêtre introuvable".to_string())?
+        .close()
+        .map_err(|e| e.to_string())
+}
+
 // ─── Point d'entrée ───────────────────────────────────────────────────────────
 
 pub fn run() {
@@ -217,6 +247,10 @@ pub fn run() {
             // Archives
             get_contributions_by_year_with_member,
             check_and_close_previous_year,
+            // Fenêtre
+            minimize_window,
+            toggle_maximize,
+            close_window,
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors du lancement de Tauri");
