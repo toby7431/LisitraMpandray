@@ -27,3 +27,17 @@ pub struct ContributionInput {
     /// "15000.50"
     pub amount:       String,
 }
+
+/// Cotisation enrichie du nom du membre (JOIN SQL côté backend).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ContributionWithMember {
+    pub id:            i64,
+    pub member_id:     i64,
+    pub member_name:   String,
+    /// "YYYY-MM-DD"
+    pub payment_date:  String,
+    pub period:        String,
+    /// Decimal sérialisé en chaîne, ex. "15000.50"
+    pub amount:        String,
+    pub recorded_year: i32,
+}

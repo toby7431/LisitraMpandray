@@ -1,28 +1,29 @@
 /// Champ téléphone Madagascar contrôlé.
 ///
 /// - Démarre toujours par "+261 " (impossible à supprimer)
-/// - Format automatique : +261 34 123 45  (7 chiffres, groupes 2-3-2)
+/// - Format automatique : +261 XX XX XXX XX  (9 chiffres, groupes 2-2-3-2)
 /// - N'accepte que des chiffres ; espaces gérés automatiquement
 use leptos::prelude::*;
 
 // ─── Formatage ────────────────────────────────────────────────────────────────
 
-/// Formate 0-7 chiffres abonnés en "+261 XX XXX XX".
+/// Formate 0-9 chiffres abonnés en "+261 XX XX XXX XX".
 pub fn fmt_phone(digits: &str) -> String {
     let d: Vec<char> = digits.chars().collect();
     let len = d.len();
     let mut r = "+261 ".to_string();
-    if len > 0 { r.extend(&d[..2.min(len)]); }
-    if len > 2 { r.push(' '); r.extend(&d[2..5.min(len)]); }
-    if len > 5 { r.push(' '); r.extend(&d[5..7.min(len)]); }
+    if len > 0 { r.extend(&d[..2.min(len)]); }          // XX
+    if len > 2 { r.push(' '); r.extend(&d[2..4.min(len)]); }  // XX
+    if len > 4 { r.push(' '); r.extend(&d[4..7.min(len)]); }  // XXX
+    if len > 7 { r.push(' '); r.extend(&d[7..9.min(len)]); }  // XX
     r
 }
 
-/// Extrait les 7 chiffres abonnés depuis une chaîne quelconque.
+/// Extrait les 9 chiffres abonnés depuis une chaîne quelconque.
 fn extract_digits(raw: &str) -> String {
     let all: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
     let sub = if all.starts_with("261") { &all[3..] } else { &all };
-    sub.chars().take(7).collect()
+    sub.chars().take(9).collect()
 }
 
 // ─── Composant ────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ pub fn PhoneInput(
         <input
             type="tel"
             node_ref=node
-            placeholder="+261 34 123 45"
+            placeholder="+261 34 12 345 67"
             class=class
             on:input=on_input
             on:keydown=on_keydown

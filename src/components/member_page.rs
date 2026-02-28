@@ -669,7 +669,7 @@ pub fn MemberPage(
                                bg-black/40 dark:bg-black/60 backdrop-blur-sm"
                         on:click=move |ev| {
                             if ev.target() == ev.current_target() {
-                                modal_ouvert.set(false);
+                                leptos::task::spawn_local(async move { modal_ouvert.set(false); });
                             }
                         }
                     >
@@ -683,7 +683,7 @@ pub fn MemberPage(
                                     {modal_title}
                                 </h2>
                                 <button
-                                    on:click=move |_| modal_ouvert.set(false)
+                                    on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
                                     class="text-gray-400 hover:text-gray-600 \
                                            dark:hover:text-gray-200 text-xl leading-none \
                                            transition-colors"
@@ -766,7 +766,7 @@ pub fn MemberPage(
                                 <div class="flex gap-3 justify-end pt-1">
                                     <button
                                         type="button"
-                                        on:click=move |_| modal_ouvert.set(false)
+                                        on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
                                         class="px-4 py-2 text-sm font-medium \
                                                text-gray-600 dark:text-gray-300 \
                                                bg-gray-100 dark:bg-gray-700 \

@@ -103,6 +103,21 @@ pub struct ContributionInput {
     pub amount:       String,
 }
 
+// ─── Modèle ContributionWithMember ────────────────────────────────────────────
+
+/// Cotisation avec le nom complet du membre (JOIN SQL).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContributionWithMember {
+    pub id:            i64,
+    pub member_id:     i64,
+    pub member_name:   String,
+    pub payment_date:  String,
+    pub period:        String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount:        Decimal,
+    pub recorded_year: i32,
+}
+
 // ─── Modèle YearSummary ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,6 +192,21 @@ impl Repository {
         }
     }
 
+    /// Formate un Decimal en chaîne lisible "1 234 567 Ariary" (partie entière seulement).
+    fn format_ariary_note(total: &Decimal) -> String {
+        let n = total.to_string();
+        let integer_part = n.split('.').next().unwrap_or("0");
+        let len = integer_part.len();
+        let mut result = String::new();
+        for (i, c) in integer_part.chars().enumerate() {
+            if i > 0 && (len - i) % 3 == 0 {
+                result.push(' ');
+            }
+            result.push(c);
+        }
+        format!("{} Ariary", result)
+    }
+
     /// Recalcule le total d'une année depuis les contributions, puis fait un UPSERT.
     async fn refresh_year_total(&self, year: i32) -> Result<(), AppError> {
         let rows = sqlx::query(
@@ -244,7 +274,7 @@ impl Repository {
         let rows = sqlx::query(
             "SELECT m.id, m.card_number, m.full_name, m.address, m.phone, m.job,
                     m.gender, m.member_type, m.created_at,
-                    COALESCE(SUM(CAST(c.amount AS REAL)), 0) AS total_contributions
+                    COALESCE(SUM(CAST(c.amount AS REAL)), 0.0) AS total_contributions
              FROM members m
              LEFT JOIN contributions c ON c.member_id = m.id
              WHERE m.member_type = ?
@@ -422,6 +452,72 @@ impl Repository {
         Ok(rows.iter().map(Self::map_contribution).collect())
     }
 
+    /// Cotisations d'une année avec le nom du membre (JOIN).
+    pub async fn get_contributions_by_year_with_member(
+        &self,
+        year: i32,
+    ) -> Result<Vec<ContributionWithMember>, AppError> {
+        let rows = sqlx::query(
+            "SELECT c.id, c.member_id, m.full_name AS member_name,
+                    c.payment_date, c.period, c.amount, c.recorded_year
+             FROM contributions c
+             JOIN members m ON m.id = c.member_id
+             WHERE c.recorded_year = ?
+             ORDER BY c.payment_date DESC",
+        )
+        .bind(year)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                let amount_str: String = r.get("amount");
+                ContributionWithMember {
+                    id:            r.get("id"),
+                    member_id:     r.get("member_id"),
+                    member_name:   r.get("member_name"),
+                    payment_date:  r.get("payment_date"),
+                    period:        r.get("period"),
+                    amount:        Decimal::from_str(&amount_str).unwrap_or(Decimal::ZERO),
+                    recorded_year: r.get("recorded_year"),
+                }
+            })
+            .collect())
+    }
+
+    /// Vérifie si l'année précédente est déjà clôturée.
+    /// Si non → calcule le total, génère une note et clôture automatiquement.
+    /// Retourne `Some(YearSummary)` si une clôture vient d'être effectuée, `None` sinon.
+    pub async fn check_and_close_previous_year(&self) -> Result<Option<YearSummary>, AppError> {
+        let prev_year = chrono::Utc::now().year() - 1;
+
+        // Déjà clôturé → rien à faire
+        if let Some(existing) = self.get_year_summary(prev_year).await? {
+            if existing.closed_at.is_some() {
+                return Ok(None);
+            }
+        }
+
+        // S'assurer que le résumé existe (même à 0) + recalculer le total
+        self.refresh_year_total(prev_year).await?;
+
+        let total = self
+            .get_year_summary(prev_year)
+            .await?
+            .map(|s| s.total)
+            .unwrap_or(Decimal::ZERO);
+
+        let note = format!(
+            "CONTRIBUTIONS de l'année {} / TOTAL : {}",
+            prev_year,
+            Self::format_ariary_note(&total)
+        );
+
+        let closed = self.close_year(prev_year, Some(note)).await?;
+        Ok(Some(closed))
+    }
+
     pub async fn create_contribution(
         &self,
         input: ContributionInput,
@@ -552,5 +648,293 @@ impl Repository {
         self.get_year_summary(year)
             .await?
             .ok_or_else(|| AppError::Validation(format!("Résumé pour {year} introuvable.")))
+    }
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Crée une DB SQLite en mémoire avec migrations appliquées.
+    async fn make_repo() -> Repository {
+        Repository::new(":memory:").await.expect("DB en mémoire")
+    }
+
+    fn member_input(card: &str, name: &str, mtype: &str) -> MemberInput {
+        MemberInput {
+            card_number: card.into(),
+            full_name:   name.into(),
+            address:     None,
+            phone:       None,
+            job:         None,
+            gender:      "M".into(),
+            member_type: mtype.into(),
+        }
+    }
+
+    fn contribution_input(member_id: i64, date: &str, period: &str, amount: &str) -> ContributionInput {
+        ContributionInput {
+            member_id,
+            payment_date: date.into(),
+            period:       period.into(),
+            amount:       amount.into(),
+        }
+    }
+
+    // ── Membres ───────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_member_ok() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Jean Dupont", "Communiant")).await.unwrap();
+        assert_eq!(m.card_number, "C001");
+        assert_eq!(m.full_name, "Jean Dupont");
+        assert_eq!(m.member_type, "Communiant");
+        assert!(m.id > 0);
+    }
+
+    #[tokio::test]
+    async fn test_create_member_carte_vide() {
+        let repo = make_repo().await;
+        let err = repo.create_member(member_input("", "Jean", "Communiant")).await.unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_member_nom_vide() {
+        let repo = make_repo().await;
+        let err = repo.create_member(member_input("C001", "  ", "Communiant")).await.unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_member_carte_duplicate() {
+        let repo = make_repo().await;
+        repo.create_member(member_input("C001", "Jean", "Communiant")).await.unwrap();
+        let err = repo.create_member(member_input("C001", "Pierre", "Communiant")).await.unwrap_err();
+        assert!(matches!(err, AppError::Db(_)));
+    }
+
+    #[tokio::test]
+    async fn test_get_members_vide() {
+        let repo = make_repo().await;
+        let list = repo.get_members().await.unwrap();
+        assert!(list.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_members() {
+        let repo = make_repo().await;
+        repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_member(member_input("C002", "Bob", "Cathekomen")).await.unwrap();
+        let list = repo.get_members().await.unwrap();
+        assert_eq!(list.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_get_members_by_type() {
+        let repo = make_repo().await;
+        repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_member(member_input("C002", "Bob", "Cathekomen")).await.unwrap();
+        repo.create_member(member_input("C003", "Carol", "Communiant")).await.unwrap();
+
+        let comm = repo.get_members_by_type("Communiant").await.unwrap();
+        assert_eq!(comm.len(), 2);
+
+        let cath = repo.get_members_by_type("Cathekomen").await.unwrap();
+        assert_eq!(cath.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_update_member() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let updated = repo.update_member(m.id, member_input("C001-U", "Alice Martin", "Communiant")).await.unwrap();
+        assert_eq!(updated.card_number, "C001-U");
+        assert_eq!(updated.full_name, "Alice Martin");
+    }
+
+    #[tokio::test]
+    async fn test_delete_member_cascade() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        // Ajouter une contribution
+        repo.create_contribution(contribution_input(m.id, "2024-03-01", "2024", "5000")).await.unwrap();
+        // Supprimer le membre → la contribution doit disparaître en cascade
+        repo.delete_member(m.id).await.unwrap();
+        let list = repo.get_members().await.unwrap();
+        assert!(list.is_empty());
+        let contribs = repo.get_contributions(m.id).await.unwrap();
+        assert!(contribs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_transfer_members() {
+        let repo = make_repo().await;
+        let m1 = repo.create_member(member_input("C001", "Alice", "Cathekomen")).await.unwrap();
+        let m2 = repo.create_member(member_input("C002", "Bob", "Cathekomen")).await.unwrap();
+        let n = repo.transfer_members(&[m1.id, m2.id], "Communiant").await.unwrap();
+        assert_eq!(n, 2);
+        let comm = repo.get_members_by_type("Communiant").await.unwrap();
+        assert_eq!(comm.len(), 2);
+        let cath = repo.get_members_by_type("Cathekomen").await.unwrap();
+        assert!(cath.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_transfer_ids_vides() {
+        let repo = make_repo().await;
+        let n = repo.transfer_members(&[], "Communiant").await.unwrap();
+        assert_eq!(n, 0);
+    }
+
+    // ── Total contributions membre ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_total_contributions_zero() {
+        let repo = make_repo().await;
+        repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let list = repo.get_members_by_type_with_total("Communiant").await.unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].total_contributions, "0");
+    }
+
+    #[tokio::test]
+    async fn test_total_contributions_somme() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2024-01-15", "2024", "10000")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2024-06-01", "2024", "5000.50")).await.unwrap();
+        let list = repo.get_members_by_type_with_total("Communiant").await.unwrap();
+        // 10000 + 5000.50 = 15000 (arrondi f64 as i64 dans le formatter)
+        let total: f64 = list[0].total_contributions.parse().unwrap();
+        assert!((total - 15000.0).abs() < 2.0);
+    }
+
+    // ── Contributions ─────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_contribution_ok() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let c = repo.create_contribution(contribution_input(m.id, "2024-03-15", "2024", "12000")).await.unwrap();
+        assert_eq!(c.member_id, m.id);
+        assert_eq!(c.period, "2024");
+        assert_eq!(c.recorded_year, 2024);
+        assert_eq!(c.amount.to_string(), "12000");
+    }
+
+    #[tokio::test]
+    async fn test_create_contribution_montant_invalide() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let err = repo.create_contribution(contribution_input(m.id, "2024-03-15", "2024", "abc")).await.unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_contribution_montant_negatif() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let err = repo.create_contribution(contribution_input(m.id, "2024-03-15", "2024", "-500")).await.unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_contribution_date_invalide() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let err = repo.create_contribution(contribution_input(m.id, "15-03-2024", "2024", "1000")).await.unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn test_delete_contribution_recalcule_total() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        let c1 = repo.create_contribution(contribution_input(m.id, "2024-01-01", "2024", "10000")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2024-06-01", "2024", "5000")).await.unwrap();
+
+        // Total = 15000
+        let s = repo.get_year_summary(2024).await.unwrap().unwrap();
+        assert_eq!(s.total, Decimal::from_str("15000").unwrap());
+
+        // Supprimer la première → total = 5000
+        repo.delete_contribution(c1.id).await.unwrap();
+        let s2 = repo.get_year_summary(2024).await.unwrap().unwrap();
+        assert_eq!(s2.total, Decimal::from_str("5000").unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_get_contributions_by_year_with_member() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice Rakoto", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2024-04-10", "2024", "8000")).await.unwrap();
+        let list = repo.get_contributions_by_year_with_member(2024).await.unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].member_name, "Alice Rakoto");
+        assert_eq!(list[0].recorded_year, 2024);
+    }
+
+    // ── Résumés annuels ───────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_year_summary_auto_cree() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2023-05-01", "2023", "20000")).await.unwrap();
+        let s = repo.get_year_summary(2023).await.unwrap().unwrap();
+        assert_eq!(s.year, 2023);
+        assert_eq!(s.total, Decimal::from_str("20000").unwrap());
+        assert!(s.closed_at.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_close_and_reopen_year() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2022-01-01", "2022", "50000")).await.unwrap();
+
+        let closed = repo.close_year(2022, Some("Test note".into())).await.unwrap();
+        assert!(closed.closed_at.is_some());
+        assert_eq!(closed.note.as_deref(), Some("Test note"));
+
+        let reopened = repo.reopen_year(2022).await.unwrap();
+        assert!(reopened.closed_at.is_none());
+        assert!(reopened.note.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_close_year_sans_contributions() {
+        let repo = make_repo().await;
+        // Créer une année vide via refresh
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2021-01-01", "2021", "0")).await.unwrap();
+        let closed = repo.close_year(2021, None).await.unwrap();
+        assert!(closed.closed_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_get_year_summaries_ordre_desc() {
+        let repo = make_repo().await;
+        let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2021-01-01", "2021", "1000")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2023-01-01", "2023", "2000")).await.unwrap();
+        repo.create_contribution(contribution_input(m.id, "2022-01-01", "2022", "3000")).await.unwrap();
+        let list = repo.get_year_summaries().await.unwrap();
+        assert_eq!(list.len(), 3);
+        assert_eq!(list[0].year, 2023);
+        assert_eq!(list[1].year, 2022);
+        assert_eq!(list[2].year, 2021);
+    }
+
+    #[tokio::test]
+    async fn test_format_ariary_note() {
+        let d = Decimal::from_str("1234567").unwrap();
+        assert_eq!(Repository::format_ariary_note(&d), "1 234 567 Ariary");
+        let z = Decimal::ZERO;
+        assert_eq!(Repository::format_ariary_note(&z), "0 Ariary");
     }
 }

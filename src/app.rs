@@ -6,11 +6,13 @@ use leptos_router::{
 use web_sys::window;
 
 use crate::{
-    components::{navbar::Navbar, sky_canvas::SkyCanvas},
+    components::{navbar::Navbar, sky_canvas::SkyCanvas, year_toast::YearToast},
+    models::year_summary::YearSummary,
     pages::{
         accueil::Accueil, archives::Archives, cathekomens::Cathekomens,
         communiants::Communiants,
     },
+    services::db_service,
 };
 
 // ─── Thème ──────────────────────────────────────────────────────────────────
@@ -56,14 +58,21 @@ impl Theme {
     }
 }
 
-// ─── Contexte global ────────────────────────────────────────────────────────
+// ─── Contextes globaux ──────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 pub struct ThemeCtx {
     pub theme: RwSignal<Theme>,
 }
 
-// ─── Helpers localStorage ───────────────────────────────────────────────────
+/// Contexte pour le toast de clôture annuelle.
+/// `data` contient le résumé de l'année venant d'être clôturée, ou `None`.
+#[derive(Clone, Copy)]
+pub struct ToastCtx {
+    pub data: RwSignal<Option<YearSummary>>,
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 fn load_theme() -> Theme {
     window()
@@ -106,6 +115,22 @@ pub fn apply_theme_to_dom(theme: Theme) {
     }
 }
 
+/// Attendre `ms` millisecondes (non-bloquant, WASM-compatible).
+async fn sleep_ms(ms: u32) {
+    use js_sys::Promise;
+    use wasm_bindgen_futures::JsFuture;
+    let p = Promise::new(&mut |resolve, _| {
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                &resolve,
+                ms as i32,
+            )
+            .unwrap();
+    });
+    let _ = JsFuture::from(p).await;
+}
+
 // ─── Composant racine ───────────────────────────────────────────────────────
 
 #[component]
@@ -123,14 +148,29 @@ pub fn App() -> impl IntoView {
         apply_theme_to_dom(t);
     });
 
+    // ── Toast clôture annuelle ───────────────────────────────────────────────
+    let toast_data: RwSignal<Option<YearSummary>> = RwSignal::new(None);
+    provide_context(ToastCtx { data: toast_data });
+
+    // Vérification immédiate au lancement, puis toutes les 24h
+    leptos::task::spawn_local(async move {
+        if let Ok(Some(s)) = db_service::check_and_close_previous_year().await {
+            toast_data.set(Some(s));
+        }
+        loop {
+            sleep_ms(86_400_000).await; // 24 heures
+            if let Ok(Some(s)) = db_service::check_and_close_previous_year().await {
+                toast_data.set(Some(s));
+            }
+        }
+    });
+
     view! {
         <Router>
             // ── Couche 0 : ciel animé (fixed, derrière tout) ──────────────────
             <SkyCanvas />
 
             // ── Couche 1 : contenu (fixed aussi, scrollable, au-dessus du ciel)
-            // On utilise position:fixed + overflow-y:auto pour que le contenu
-            // flotte au-dessus du canvas sans jamais le pousser vers le bas.
             <div style="position:fixed;inset:0;z-index:10;overflow-y:auto;"
                  class="flex flex-col min-h-full">
                 <Navbar />
@@ -149,6 +189,9 @@ pub fn App() -> impl IntoView {
                     </Routes>
                 </main>
             </div>
+
+            // ── Toast cloche (au-dessus de tout, z-50) ────────────────────────
+            <YearToast />
         </Router>
     }
 }

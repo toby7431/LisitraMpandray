@@ -256,7 +256,10 @@ pub fn ContributionModal(
                 let same = ev.target().zip(ev.current_target())
                     .map(|(t, c)| JsValue::from(t) == JsValue::from(c))
                     .unwrap_or(false);
-                if same { open.set(false); }
+                if same {
+                    // Différer pour éviter "closure dropped" pendant l'event handler
+                    leptos::task::spawn_local(async move { open.set(false); });
+                }
             }
         >
             // Panneau
@@ -276,7 +279,7 @@ pub fn ContributionModal(
                         </p>
                     </div>
                     <button
-                        on:click=move |_| open.set(false)
+                        on:click=move |_| { leptos::task::spawn_local(async move { open.set(false); }); }
                         class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 \
                                text-xl leading-none transition-colors"
                     >
@@ -360,7 +363,7 @@ pub fn ContributionModal(
                     <div class="flex gap-3 justify-end pt-1">
                         <button
                             type="button"
-                            on:click=move |_| open.set(false)
+                            on:click=move |_| { leptos::task::spawn_local(async move { open.set(false); }); }
                             class="px-4 py-2 text-sm font-medium \
                                    text-gray-600 dark:text-gray-300 \
                                    bg-gray-100 dark:bg-gray-700 \

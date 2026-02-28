@@ -1,7 +1,7 @@
 mod db;
 use db::{
-    Contribution, ContributionInput, Member, MemberInput, MemberWithTotal, Repository,
-    YearSummary,
+    Contribution, ContributionInput, ContributionWithMember, Member, MemberInput, MemberWithTotal,
+    Repository, YearSummary,
 };
 use tauri::Manager;
 
@@ -143,6 +143,29 @@ async fn transfer_members(
     state.transfer_members(&ids, &new_type).await.map_err(|e| e.to_string())
 }
 
+// ─── Commandes Archives ───────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn get_contributions_by_year_with_member(
+    state: tauri::State<'_, Repository>,
+    year: i32,
+) -> Result<Vec<ContributionWithMember>, String> {
+    state
+        .get_contributions_by_year_with_member(year)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn check_and_close_previous_year(
+    state: tauri::State<'_, Repository>,
+) -> Result<Option<YearSummary>, String> {
+    state
+        .check_and_close_previous_year()
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // ─── Point d'entrée ───────────────────────────────────────────────────────────
 
 pub fn run() {
@@ -191,6 +214,9 @@ pub fn run() {
             reopen_year,
             // Transfer
             transfer_members,
+            // Archives
+            get_contributions_by_year_with_member,
+            check_and_close_previous_year,
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors du lancement de Tauri");
