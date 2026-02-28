@@ -89,7 +89,7 @@ fn system_prefers_dark() -> bool {
         .unwrap_or(false)
 }
 
-pub fn apply_theme_to_dom(theme: Theme) {
+pub fn apply_theme_to_dom(theme: Theme, with_transition: bool) {
     let dark = match theme {
         Theme::Dark   => true,
         Theme::Light  => false,
@@ -99,6 +99,14 @@ pub fn apply_theme_to_dom(theme: Theme) {
         .and_then(|w| w.document())
         .and_then(|d| d.document_element())
     {
+        if with_transition {
+            let _ = html.class_list().add_1("theme-transitioning");
+            let html2 = html.clone();
+            leptos::task::spawn_local(async move {
+                sleep_ms(900).await;
+                let _ = html2.class_list().remove_1("theme-transitioning");
+            });
+        }
         if dark {
             let _ = html.class_list().add_1("dark");
             let _ = html.class_list().remove_1("light");
@@ -130,16 +138,17 @@ async fn sleep_ms(ms: u32) {
 #[component]
 pub fn App() -> impl IntoView {
     let initial = load_theme();
-    apply_theme_to_dom(initial);
+    apply_theme_to_dom(initial, false); // pas de transition au premier rendu
 
     let theme = RwSignal::new(initial);
     provide_context(ThemeCtx { theme });
 
     // Réagit à chaque changement de thème → DOM + localStorage
-    Effect::new(move |_| {
+    // `old.is_some()` = false au premier run, true ensuite → transition seulement lors des bascules
+    Effect::new(move |old: Option<()>| {
         let t = theme.get();
         save_theme(t);
-        apply_theme_to_dom(t);
+        apply_theme_to_dom(t, old.is_some());
     });
 
     // ── Toast clôture annuelle ───────────────────────────────────────────────

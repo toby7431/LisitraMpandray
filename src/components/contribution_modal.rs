@@ -1,5 +1,6 @@
 /// Modal d'ajout de cotisation + couche confetti.
 use js_sys::{Date, Function, Math, Promise};
+use leptos::portal::Portal;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -252,22 +253,23 @@ pub fn ContributionModal(
 
     // ─── Vue ──────────────────────────────────────────────────────────────────
     view! {
-        // Overlay
+        <Portal>
+        // Overlay — rendu dans document.body (hors du conteneur scrollable)
         <div
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 \
-                   bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+            style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
+                   display:flex;align-items:center;justify-content:center;padding:1rem;"
+            class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
             on:click=move |ev: web_sys::MouseEvent| {
                 let same = ev.target().zip(ev.current_target())
                     .map(|(t, c)| JsValue::from(t) == JsValue::from(c))
                     .unwrap_or(false);
                 if same {
-                    // Différer pour éviter "closure dropped" pendant l'event handler
                     leptos::task::spawn_local(async move { open.set(false); });
                 }
             }
         >
             // Panneau
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
+            <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
                         w-full max-w-md border border-gray-100 dark:border-gray-700 \
                         overflow-hidden">
 
@@ -284,7 +286,7 @@ pub fn ContributionModal(
                     </div>
                     <button
                         on:click=move |_| { leptos::task::spawn_local(async move { open.set(false); }); }
-                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 \
+                        class="btn-ripple text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 \
                                transition-colors p-1 rounded-lg hover:bg-gray-100 \
                                dark:hover:bg-gray-700"
                     >
@@ -371,7 +373,7 @@ pub fn ContributionModal(
                         <button
                             type="button"
                             on:click=move |_| { leptos::task::spawn_local(async move { open.set(false); }); }
-                            class="px-4 py-2 text-sm font-medium \
+                            class="btn-ripple px-4 py-2 text-sm font-medium \
                                    text-gray-600 dark:text-gray-300 \
                                    bg-gray-100 dark:bg-gray-700 \
                                    hover:bg-gray-200 dark:hover:bg-gray-600 \
@@ -382,7 +384,7 @@ pub fn ContributionModal(
                         <button
                             type="submit"
                             disabled=move || f_loading.get()
-                            class="px-4 py-2 text-sm font-semibold text-white \
+                            class="btn-ripple px-4 py-2 text-sm font-semibold text-white \
                                    bg-emerald-600 hover:bg-emerald-700 \
                                    disabled:opacity-60 disabled:cursor-wait \
                                    rounded-xl transition-colors shadow-sm"
@@ -402,5 +404,6 @@ pub fn ContributionModal(
                 </form>
             </div>
         </div>
+        </Portal>
     }
 }

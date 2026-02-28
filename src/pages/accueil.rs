@@ -168,7 +168,7 @@ pub fn Accueil() -> impl IntoView {
             </section>
 
             // ── Cartes de statistiques ─────────────────────────────────────────
-            <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 \
+            <section class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4 \
                             max-w-2xl mx-auto w-full px-4">
 
                 <StatCard

@@ -21,12 +21,12 @@ pub fn ThemeSwitcher() -> impl IntoView {
         <button
             on:click=cycle
             title="Changer le thème (Lumineux → Sombre → Système)"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg \
+            class="btn-ripple theme-icon-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg \
                    bg-white/60 dark:bg-gray-700/60 backdrop-blur \
                    border border-gray-200 dark:border-gray-600 \
                    text-gray-700 dark:text-gray-200 \
                    hover:bg-white dark:hover:bg-gray-700 \
-                   transition-all duration-200 text-sm font-medium select-none"
+                   text-sm font-medium select-none"
         >
             {move || match ctx.theme.get() {
                 Theme::Light  => view! { <IconSun     class="w-4 h-4" /> }.into_any(),

@@ -87,9 +87,9 @@ pub fn Navbar() -> impl IntoView {
                                     <A
                                         href=path
                                         attr:class=move || {
-                                            let base = "flex items-center gap-1.5 px-2 sm:px-4 py-4 sm:py-5 \
-                                                        text-xs sm:text-sm font-medium transition-colors \
-                                                        duration-200 whitespace-nowrap shrink-0";
+                                            let base = "nav-tab flex items-center gap-1.5 px-2 sm:px-4 \
+                                                        py-4 sm:py-5 text-xs sm:text-sm font-medium \
+                                                        whitespace-nowrap shrink-0";
                                             if idx.get() == i {
                                                 format!("{base} text-blue-600 dark:text-blue-400")
                                             } else {

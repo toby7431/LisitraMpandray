@@ -8,7 +8,7 @@
   background: linear-gradient(90deg, #3b82f6, #6366f1);
   /* Largeur = 100% / nombre_d_onglets (4) */
   width: 25%;
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.6s cubic-bezier(0.34, 2.2, 0.64, 1);
   will-change: transform;
 }
 
@@ -380,7 +380,15 @@ html.dark .custom-check:checked {
 }
 
 html {
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pendant la bascule de thème : propagation fluide à tous les éléments */
+html.theme-transitioning *:not(canvas):not(.nav-indicator):not(.verse-animate):not(.grand-titre):not(.verse-text):not(.verse-ref):not([style*="animation"]) {
+  transition-property: color, background-color, border-color, fill, stroke !important;
+  transition-duration: 800ms !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* ─── Bell ring ──────────────────────────────────────────────────────────────── */
@@ -420,4 +428,98 @@ html {
 }
 .toast-progress {
   animation: toast-countdown 7.6s linear forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MICRO-ANIMATIONS — Interface addictive
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Modal pop — scale + fade avec rebond ───────────────────────────────────── */
+@keyframes modal-pop {
+  0%   { opacity: 0; transform: scale(0.82) translateY(28px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-4px); }
+  80%  { transform: scale(0.98) translateY(1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-pop {
+  animation: modal-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── Overlay — fondu d'entrée ───────────────────────────────────────────────── */
+@keyframes overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.overlay-fade {
+  animation: overlay-fade 0.22s ease both;
+}
+
+/* ─── Ripple bouton — cercle blanc qui s'élargit au clic ────────────────────── */
+@keyframes ripple-expand {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+}
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, transparent 65%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.btn-ripple:active::after {
+  animation: ripple-expand 0.55s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* ─── Lignes tableau — lift + glow au survol ─────────────────────────────────── */
+.tr-hover {
+  transition:
+    transform  0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter     0.22s ease;
+  will-change: transform, filter;
+}
+.tr-hover:hover {
+  transform: scale(1.006) translateY(-1px);
+  filter: drop-shadow(0 4px 14px rgba(59, 130, 246, 0.18));
+  z-index: 1;
+  position: relative;
+}
+html.dark .tr-hover:hover {
+  filter: drop-shadow(0 4px 14px rgba(99, 102, 241, 0.28));
+}
+
+/* ─── Bouton thème — rotation + scale au survol ─────────────────────────────── */
+.theme-icon-btn {
+  transition:
+    transform  0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.2s ease !important;
+}
+.theme-icon-btn:hover {
+  transform: rotate(18deg) scale(1.12);
+}
+.theme-icon-btn:active {
+  transform: rotate(-8deg) scale(0.92);
+  transition-duration: 0.1s !important;
+}
+
+/* ─── Onglets navbar — échelle subtile ───────────────────────────────────────── */
+.nav-tab {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+.nav-tab:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+.nav-tab:active {
+  transform: scale(0.96);
+  transition-duration: 0.08s;
 }

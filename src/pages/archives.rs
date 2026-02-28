@@ -192,7 +192,7 @@ pub fn Archives() -> impl IntoView {
             }}
 
             // ── Barre de recherche ────────────────────────────────────────────
-            <div class="relative max-w-xs">
+            <div class="relative w-full max-w-xs sm:max-w-sm">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 \
                              text-gray-400 dark:text-gray-500 pointer-events-none">
                     <IconSearch class="w-4 h-4" />
@@ -357,9 +357,9 @@ pub fn Archives() -> impl IntoView {
                                                 {filtered.get().into_iter().map(|c| {
                                                     let montant = format_ariary(&c.amount);
                                                     view! {
-                                                        <tr class="hover:bg-blue-50/40 \
+                                                        <tr class="tr-hover hover:bg-blue-50/40 \
                                                                    dark:hover:bg-blue-900/10 \
-                                                                   transition-colors duration-100">
+                                                                   transition-colors duration-150">
                                                             <td class="px-4 py-2.5 \
                                                                        text-gray-800 dark:text-gray-200 \
                                                                        font-medium">

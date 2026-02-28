@@ -4,6 +4,7 @@
 /// Recherche live, tri par colonne, filtre genre, pagination, formulaire CRUD modal.
 /// Optionnel : multi-sélection + bouton "Transférer sélectionnés" (Cathécomènes → Communiants).
 use js_sys::{Function, Promise};
+use leptos::portal::Portal;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
@@ -103,7 +104,17 @@ pub fn MemberPage(
     // ── Données ────────────────────────────────────────────────────────────────
     let membres: RwSignal<Vec<MemberWithTotal>> = RwSignal::new(vec![]);
     let loading   = RwSignal::new(true);
-    let erreur: RwSignal<Option<String>> = RwSignal::new(None);
+
+    // ── Notification d'erreur flottante (auto-dismiss 4 s) ─────────────────────
+    let notif_error: RwSignal<Option<String>> = RwSignal::new(None);
+    Effect::new(move |_| {
+        if notif_error.get().is_some() {
+            leptos::task::spawn_local(async move {
+                sleep_ms(4000).await;
+                notif_error.set(None);
+            });
+        }
+    });
 
     // Déclencheur de rechargement (incrémenter pour rafraîchir)
     let refresh_ctr: RwSignal<u32> = RwSignal::new(0);
@@ -111,11 +122,10 @@ pub fn MemberPage(
     Effect::new(move |_| {
         let _ = refresh_ctr.get();
         loading.set(true);
-        erreur.set(None);
         leptos::task::spawn_local(async move {
             match db_service::get_members_by_type_with_total(member_type).await {
                 Ok(liste) => membres.set(liste),
-                Err(e)    => erreur.set(Some(e)),
+                Err(e)    => notif_error.set(Some(e)),
             }
             loading.set(false);
         });
@@ -192,9 +202,8 @@ pub fn MemberPage(
 
     // ── Sélection et transfert ─────────────────────────────────────────────────
     let transferring_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
-    let transfer_modal:   RwSignal<bool>     = RwSignal::new(false);
-    let transfer_loading: RwSignal<bool>     = RwSignal::new(false);
-    let transfer_erreur:  RwSignal<Option<String>> = RwSignal::new(None);
+    let transfer_modal:   RwSignal<bool> = RwSignal::new(false);
+    let transfer_loading: RwSignal<bool> = RwSignal::new(false);
 
     let all_page_selected = Memo::new(move |_| {
         let items = page_items.get();
@@ -206,7 +215,6 @@ pub fn MemberPage(
         if ids.is_empty() { return; }
         let target = match transfer_to { Some(t) => t, None => return };
         transfer_loading.set(true);
-        transfer_erreur.set(None);
         // Lance l'animation immédiatement
         transferring_ids.set(ids.clone());
         leptos::task::spawn_local(async move {
@@ -221,7 +229,7 @@ pub fn MemberPage(
                     refresh_ctr.update(|n| *n += 1);
                 }
                 Err(e) => {
-                    transfer_erreur.set(Some(e));
+                    notif_error.set(Some(e));
                     transferring_ids.set(vec![]);
                 }
             }
@@ -239,7 +247,6 @@ pub fn MemberPage(
     let f_telephone: RwSignal<String> = RwSignal::new(String::new());
     let f_travail:   RwSignal<String> = RwSignal::new(String::new());
     let f_genre:     RwSignal<String> = RwSignal::new("M".into());
-    let f_erreur:    RwSignal<Option<String>> = RwSignal::new(None);
     let f_loading:   RwSignal<bool>   = RwSignal::new(false);
 
     // ── Modal Cotisation ───────────────────────────────────────────────────────
@@ -255,7 +262,6 @@ pub fn MemberPage(
         f_telephone.set(String::new());
         f_travail.set(String::new());
         f_genre.set("M".into());
-        f_erreur.set(None);
         edit_id.set(None);
     };
 
@@ -278,7 +284,6 @@ pub fn MemberPage(
             member_type: member_type.to_string(),
         };
         f_loading.set(true);
-        f_erreur.set(None);
         let eid = edit_id.get();
         leptos::task::spawn_local(async move {
             let res = if let Some(id) = eid {
@@ -291,7 +296,7 @@ pub fn MemberPage(
                     modal_ouvert.set(false);
                     refresh_ctr.update(|n| *n += 1);
                 }
-                Err(e) => f_erreur.set(Some(e)),
+                Err(e) => notif_error.set(Some(e)),
             }
             f_loading.set(false);
         });
@@ -300,6 +305,25 @@ pub fn MemberPage(
     // ─── Vue ──────────────────────────────────────────────────────────────────
     view! {
         <div class="animate-fade-in space-y-4 sm:space-y-5">
+
+            // ── Notification d'erreur flottante ────────────────────────────────
+            {move || notif_error.get().map(|msg| view! {
+                <div class="fixed top-5 right-5 z-[100] flex items-start gap-3 \
+                            px-4 py-3 rounded-2xl shadow-2xl border \
+                            bg-white dark:bg-gray-800 \
+                            border-red-200 dark:border-red-700 \
+                            max-w-xs w-full animate-fade-in">
+                    <IconAlertTriangle class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                    <p class="text-sm text-red-700 dark:text-red-300 flex-1 leading-snug">{msg}</p>
+                    <button
+                        on:click=move |_| notif_error.set(None)
+                        class="btn-ripple text-red-400 hover:text-red-600 \
+                               dark:hover:text-red-200 rounded p-0.5 transition-colors"
+                    >
+                        <IconX class="w-4 h-4" />
+                    </button>
+                </div>
+            })}
 
             // ── En-tête ────────────────────────────────────────────────────────
             <div class="flex flex-wrap items-start sm:items-center justify-between gap-3">
@@ -323,11 +347,10 @@ pub fn MemberPage(
                         Some(view! {
                             <button
                                 on:click=move |_| transfer_modal.set(true)
-                                class="px-3 py-2 text-xs sm:text-sm font-semibold text-white \
+                                class="btn-ripple px-3 py-2 text-xs sm:text-sm font-semibold text-white \
                                        bg-amber-500 hover:bg-amber-600 \
                                        rounded-xl transition-colors duration-200 \
-                                       flex items-center gap-1.5 shadow-sm \
-                                       animate-pulse-once"
+                                       flex items-center gap-1.5 shadow-sm"
                             >
                                 <IconTransfer class="w-4 h-4" />
                                 {format!("Transférer ({n})")}
@@ -336,7 +359,7 @@ pub fn MemberPage(
                     }}
                     <button
                         on:click=move |_| { reset_form(); modal_ouvert.set(true); }
-                        class=format!("px-3 sm:px-4 py-2 {} text-white rounded-xl \
+                        class=format!("btn-ripple px-3 sm:px-4 py-2 {} text-white rounded-xl \
                                        text-xs sm:text-sm font-semibold transition-colors \
                                        duration-200 flex items-center gap-1.5 shadow-sm",
                                        btn_class)
@@ -401,17 +424,6 @@ pub fn MemberPage(
                 }}
             </div>
 
-            // ── Bannière d'erreur ──────────────────────────────────────────────
-            {move || erreur.get().map(|e| view! {
-                <div class="p-3 bg-red-50 dark:bg-red-900/30 \
-                            border border-red-200 dark:border-red-700 \
-                            rounded-xl text-red-700 dark:text-red-300 text-sm \
-                            flex items-start gap-2">
-                    <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{e}</span>
-                </div>
-            })}
-
             // ── Contenu principal ──────────────────────────────────────────────
             {move || {
                 if loading.get() {
@@ -447,7 +459,7 @@ pub fn MemberPage(
                                         rounded-2xl border border-gray-100 dark:border-gray-700 \
                                         overflow-hidden shadow-sm">
                                 <div class="overflow-x-auto">
-                                    <table class="w-full text-sm min-w-[700px]">
+                                    <table class="w-full text-sm">
                                         <thead>
                                             <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
                                                        border-b border-gray-100 dark:border-gray-700 \
@@ -479,13 +491,13 @@ pub fn MemberPage(
                                                         />
                                                     </th>
                                                 })}
-                                                <Th label="N° Carte" col=SortCol::Carte sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Nom complet" col=SortCol::Nom sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Adresse" col=SortCol::Adresse sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Téléphone" col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Travail" col=SortCol::Travail sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Genre" col=SortCol::Genre sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Total cotisations" col=SortCol::Total sort_col=sort_col sort_dir=sort_dir />
+                                                <Th label="N° Carte"        col=SortCol::Carte     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
+                                                <Th label="Nom complet"     col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
+                                                <Th label="Adresse"         col=SortCol::Adresse   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
+                                                <Th label="Téléphone"       col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir extra_class="hidden lg:table-cell" />
+                                                <Th label="Travail"         col=SortCol::Travail   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
+                                                <Th label="Genre"           col=SortCol::Genre     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
+                                                <Th label="Total cotis."    col=SortCol::Total     sort_col=sort_col sort_dir=sort_dir />
                                                 <th class="px-3 py-3 text-right pr-4">"Actions"</th>
                                             </tr>
                                         </thead>
@@ -503,8 +515,9 @@ pub fn MemberPage(
                                                         <tr class=move || {
                                                             let sliding = transferring_ids.get().contains(&mid);
                                                             format!(
-                                                                "border-b border-gray-50 dark:border-gray-700/50 \
-                                                                 {} transition-colors duration-100{}",
+                                                                "tr-hover border-b border-gray-50 \
+                                                                 dark:border-gray-700/50 \
+                                                                 {} transition-colors duration-150{}",
                                                                 row_hover,
                                                                 if sliding { " row-sliding-out" } else { "" }
                                                             )
@@ -529,39 +542,49 @@ pub fn MemberPage(
                                                                     />
                                                                 </td>
                                                             })}
-                                                            <td class="px-3 py-2.5 font-mono text-xs \
-                                                                       text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                                            <td class="hidden sm:table-cell px-3 py-2.5 \
+                                                                       font-mono text-xs \
+                                                                       text-gray-500 dark:text-gray-400 \
+                                                                       whitespace-nowrap">
                                                                 {m.card_number.clone()}
                                                             </td>
                                                             <td class="px-3 py-2.5 font-semibold \
-                                                                       text-gray-800 dark:text-white whitespace-nowrap">
+                                                                       text-gray-800 dark:text-white \
+                                                                       whitespace-nowrap">
                                                                 {m.full_name.clone()}
                                                             </td>
-                                                            <td class="px-3 py-2.5 text-gray-600 \
-                                                                       dark:text-gray-300 max-w-[140px] truncate">
+                                                            <td class="hidden md:table-cell px-3 py-2.5 \
+                                                                       text-gray-600 dark:text-gray-300 \
+                                                                       max-w-[140px] truncate">
                                                                 {m.address.clone().unwrap_or_else(|| "—".into())}
                                                             </td>
-                                                            <td class="px-3 py-2.5 text-gray-600 \
-                                                                       dark:text-gray-300 whitespace-nowrap">
+                                                            <td class="hidden lg:table-cell px-3 py-2.5 \
+                                                                       text-gray-600 dark:text-gray-300 \
+                                                                       whitespace-nowrap">
                                                                 {m.phone.clone().unwrap_or_else(|| "—".into())}
                                                             </td>
-                                                            <td class="px-3 py-2.5 text-gray-600 \
-                                                                       dark:text-gray-300 max-w-[120px] truncate">
+                                                            <td class="hidden md:table-cell px-3 py-2.5 \
+                                                                       text-gray-600 dark:text-gray-300 \
+                                                                       max-w-[120px] truncate">
                                                                 {m.job.clone().unwrap_or_else(|| "—".into())}
                                                             </td>
-                                                            <td class="px-3 py-2.5 text-gray-600 \
-                                                                       dark:text-gray-300 whitespace-nowrap">
+                                                            <td class="hidden sm:table-cell px-3 py-2.5 \
+                                                                       text-gray-600 dark:text-gray-300 \
+                                                                       whitespace-nowrap">
                                                                 {genre_label}
                                                             </td>
                                                             <td class="px-3 py-2.5 font-mono font-semibold \
-                                                                       text-gray-800 dark:text-white whitespace-nowrap">
+                                                                       text-gray-800 dark:text-white \
+                                                                       whitespace-nowrap">
                                                                 {total}
                                                             </td>
                                                             <td class="px-3 py-2.5 pr-4 text-right whitespace-nowrap">
                                                                 <button
                                                                     title="Cotisation"
-                                                                    class="mr-2 text-xs text-amber-500 dark:text-amber-400 \
-                                                                           hover:underline font-medium"
+                                                                    class="btn-ripple mr-2 text-xs text-amber-500 \
+                                                                           dark:text-amber-400 rounded \
+                                                                           hover:scale-125 transition-transform \
+                                                                           duration-150 font-medium"
                                                                     on:click=move |_| {
                                                                         contrib_membre_id.set(mid);
                                                                         contrib_membre_nom.set(m.full_name.clone());
@@ -572,8 +595,10 @@ pub fn MemberPage(
                                                                 </button>
                                                                 <button
                                                                     title="Modifier"
-                                                                    class=format!("mr-2 text-xs {} \
-                                                                                   hover:underline font-medium", link_class)
+                                                                    class=format!("btn-ripple mr-2 text-xs {} \
+                                                                                   rounded hover:scale-125 \
+                                                                                   transition-transform duration-150 \
+                                                                                   font-medium", link_class)
                                                                     on:click=move |_| {
                                                                         edit_id.set(Some(m_edit.id));
                                                                         f_carte.set(m_edit.card_number.clone());
@@ -582,7 +607,6 @@ pub fn MemberPage(
                                                                         f_telephone.set(m_edit.phone.clone().unwrap_or_default());
                                                                         f_travail.set(m_edit.job.clone().unwrap_or_default());
                                                                         f_genre.set(m_edit.gender.clone());
-                                                                        f_erreur.set(None);
                                                                         modal_ouvert.set(true);
                                                                     }
                                                                 >
@@ -590,8 +614,10 @@ pub fn MemberPage(
                                                                 </button>
                                                                 <button
                                                                     title="Supprimer"
-                                                                    class="text-xs text-red-500 dark:text-red-400 \
-                                                                           hover:underline font-medium"
+                                                                    class="btn-ripple text-xs text-red-500 \
+                                                                           dark:text-red-400 rounded \
+                                                                           hover:scale-125 transition-transform \
+                                                                           duration-150 font-medium"
                                                                     on:click=move |_| {
                                                                         let ok = web_sys::window()
                                                                             .and_then(|w| {
@@ -604,7 +630,7 @@ pub fn MemberPage(
                                                                             leptos::task::spawn_local(async move {
                                                                                 match db_service::delete_member(mid).await {
                                                                                     Ok(_)  => refresh_ctr.update(|n| *n += 1),
-                                                                                    Err(e) => erreur.set(Some(e)),
+                                                                                    Err(e) => notif_error.set(Some(e)),
                                                                                 }
                                                                             });
                                                                         }
@@ -622,54 +648,56 @@ pub fn MemberPage(
                                 </div>
                             </div>
 
-                            // ── Pagination ───────────────────────────────────────
-                            <div class="flex items-center justify-between flex-wrap gap-2 px-1">
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    {move || {
-                                        let total = sorted_filtered.get().len();
-                                        let p     = page.get();
-                                        let from  = (p * PAGE_SIZE + 1).min(total);
-                                        let to    = ((p + 1) * PAGE_SIZE).min(total);
-                                        format!("{from}–{to} sur {total}")
-                                    }}
-                                </span>
-                                <div class="flex items-center gap-1">
-                                    <button
-                                        disabled=move || page.get() == 0
-                                        on:click=move |_| page.update(|p| *p = p.saturating_sub(1))
-                                        class="px-3 py-1.5 text-xs rounded-lg \
-                                               bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                               border border-gray-200 dark:border-gray-600 \
-                                               text-gray-700 dark:text-gray-300 \
-                                               disabled:opacity-40 disabled:cursor-not-allowed \
-                                               hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                    >
-                                        <span class="flex items-center gap-1">
-                                            <IconChevronLeft class="w-3.5 h-3.5" />
-                                            "Préc."
-                                        </span>
-                                    </button>
-                                    <span class="px-3 py-1.5 text-xs font-medium \
-                                                 text-gray-700 dark:text-gray-300">
-                                        {move || format!("{} / {}", page.get() + 1, total_pages.get())}
+                            // ── Pagination (masquée si une seule page) ───────────
+                            {move || (total_pages.get() > 1).then(|| view! {
+                                <div class="flex items-center justify-between flex-wrap gap-2 px-1">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                        {move || {
+                                            let total = sorted_filtered.get().len();
+                                            let p     = page.get();
+                                            let from  = (p * PAGE_SIZE + 1).min(total);
+                                            let to    = ((p + 1) * PAGE_SIZE).min(total);
+                                            format!("{from}–{to} sur {total}")
+                                        }}
                                     </span>
-                                    <button
-                                        disabled=move || page.get() + 1 >= total_pages.get()
-                                        on:click=move |_| page.update(|p| *p += 1)
-                                        class="px-3 py-1.5 text-xs rounded-lg \
-                                               bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                               border border-gray-200 dark:border-gray-600 \
-                                               text-gray-700 dark:text-gray-300 \
-                                               disabled:opacity-40 disabled:cursor-not-allowed \
-                                               hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                    >
-                                        <span class="flex items-center gap-1">
-                                            "Suiv."
-                                            <IconChevronRight class="w-3.5 h-3.5" />
+                                    <div class="flex items-center gap-1">
+                                        <button
+                                            disabled=move || page.get() == 0
+                                            on:click=move |_| page.update(|p| *p = p.saturating_sub(1))
+                                            class="btn-ripple px-3 py-1.5 text-xs rounded-lg \
+                                                   bg-white/70 dark:bg-gray-800/70 backdrop-blur \
+                                                   border border-gray-200 dark:border-gray-600 \
+                                                   text-gray-700 dark:text-gray-300 \
+                                                   disabled:opacity-40 disabled:cursor-not-allowed \
+                                                   hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                        >
+                                            <span class="flex items-center gap-1">
+                                                <IconChevronLeft class="w-3.5 h-3.5" />
+                                                "Préc."
+                                            </span>
+                                        </button>
+                                        <span class="px-3 py-1.5 text-xs font-medium \
+                                                     text-gray-700 dark:text-gray-300">
+                                            {move || format!("{} / {}", page.get() + 1, total_pages.get())}
                                         </span>
-                                    </button>
+                                        <button
+                                            disabled=move || page.get() + 1 >= total_pages.get()
+                                            on:click=move |_| page.update(|p| *p += 1)
+                                            class="btn-ripple px-3 py-1.5 text-xs rounded-lg \
+                                                   bg-white/70 dark:bg-gray-800/70 backdrop-blur \
+                                                   border border-gray-200 dark:border-gray-600 \
+                                                   text-gray-700 dark:text-gray-300 \
+                                                   disabled:opacity-40 disabled:cursor-not-allowed \
+                                                   hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                        >
+                                            <span class="flex items-center gap-1">
+                                                "Suiv."
+                                                <IconChevronRight class="w-3.5 h-3.5" />
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            })}
                         </div>
                     }.into_any()
                 }
@@ -681,16 +709,18 @@ pub fn MemberPage(
                 let modal_title = if is_edit { "Modifier le membre" } else { "Nouveau membre" };
 
                 view! {
+                    <Portal>
                     <div
-                        class="fixed inset-0 z-50 flex items-center justify-center p-4 \
-                               bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                        style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
+                               display:flex;align-items:center;justify-content:center;padding:1rem;"
+                        class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
                         on:click=move |ev| {
                             if ev.target() == ev.current_target() {
                                 leptos::task::spawn_local(async move { modal_ouvert.set(false); });
                             }
                         }
                     >
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
+                        <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
                                     w-full max-w-lg max-h-[90vh] overflow-y-auto \
                                     border border-gray-100 dark:border-gray-700">
 
@@ -772,21 +802,11 @@ pub fn MemberPage(
                                     />
                                 </div>
 
-                                {move || f_erreur.get().map(|e| view! {
-                                    <div class="p-3 bg-red-50 dark:bg-red-900/30 \
-                                                border border-red-200 dark:border-red-700 \
-                                                rounded-xl text-red-700 dark:text-red-300 text-xs \
-                                                flex items-start gap-2">
-                                        <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
-                                        <span>{e}</span>
-                                    </div>
-                                })}
-
                                 <div class="flex gap-3 justify-end pt-1">
                                     <button
                                         type="button"
                                         on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
-                                        class="px-4 py-2 text-sm font-medium \
+                                        class="btn-ripple px-4 py-2 text-sm font-medium \
                                                text-gray-600 dark:text-gray-300 \
                                                bg-gray-100 dark:bg-gray-700 \
                                                hover:bg-gray-200 dark:hover:bg-gray-600 \
@@ -797,7 +817,7 @@ pub fn MemberPage(
                                     <button
                                         type="submit"
                                         disabled=move || f_loading.get()
-                                        class=format!("px-4 py-2 text-sm font-semibold \
+                                        class=format!("btn-ripple px-4 py-2 text-sm font-semibold \
                                                        text-white {} rounded-xl \
                                                        disabled:opacity-60 disabled:cursor-wait \
                                                        transition-colors shadow-sm", btn_class)
@@ -808,6 +828,7 @@ pub fn MemberPage(
                             </form>
                         </div>
                     </div>
+                    </Portal>
                 }
             })}
 
@@ -817,9 +838,13 @@ pub fn MemberPage(
                 let n           = selected.get().len();
                 let target_name = transfer_to.unwrap_or("Communiant");
                 Some(view! {
-                    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 \
-                                bg-black/40 dark:bg-black/60 backdrop-blur-sm">
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
+                    <Portal>
+                    <div
+                        style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
+                               display:flex;align-items:center;justify-content:center;padding:1rem;"
+                        class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                    >
+                        <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
                                     w-full max-w-sm border border-gray-100 dark:border-gray-700 \
                                     overflow-hidden">
                             // En-tête coloré
@@ -852,24 +877,14 @@ pub fn MemberPage(
                                          leur historique est préservé."
                                     </span>
                                 </div>
-                                {move || transfer_erreur.get().map(|e| view! {
-                                    <div class="p-3 bg-red-50 dark:bg-red-900/30 \
-                                                border border-red-200 dark:border-red-700 \
-                                                rounded-xl text-red-700 dark:text-red-300 \
-                                                text-xs flex items-start gap-2">
-                                        <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
-                                        <span>{e}</span>
-                                    </div>
-                                })}
                                 <div class="flex gap-3">
                                     <button
                                         type="button"
                                         disabled=move || transfer_loading.get()
                                         on:click=move |_| {
                                             transfer_modal.set(false);
-                                            transfer_erreur.set(None);
                                         }
-                                        class="flex-1 px-4 py-2.5 text-sm font-medium \
+                                        class="btn-ripple flex-1 px-4 py-2.5 text-sm font-medium \
                                                text-gray-600 dark:text-gray-300 \
                                                bg-gray-100 dark:bg-gray-700 \
                                                hover:bg-gray-200 dark:hover:bg-gray-600 \
@@ -881,7 +896,7 @@ pub fn MemberPage(
                                         type="button"
                                         disabled=move || transfer_loading.get()
                                         on:click=move |_| do_transfer()
-                                        class="flex-1 px-4 py-2.5 text-sm font-semibold \
+                                        class="btn-ripple flex-1 px-4 py-2.5 text-sm font-semibold \
                                                text-white bg-amber-500 hover:bg-amber-600 \
                                                disabled:opacity-60 disabled:cursor-wait \
                                                rounded-xl transition-colors shadow-sm"
@@ -901,6 +916,7 @@ pub fn MemberPage(
                             </div>
                         </div>
                     </div>
+                    </Portal>
                 })
             }}
 
@@ -941,16 +957,18 @@ const INPUT: &str = "w-full px-3 py-2 text-sm \
 
 #[component]
 fn Th(
-    label:    &'static str,
-    col:      SortCol,
-    sort_col: RwSignal<SortCol>,
-    sort_dir: RwSignal<SortDir>,
+    label:       &'static str,
+    col:         SortCol,
+    sort_col:    RwSignal<SortCol>,
+    sort_dir:    RwSignal<SortDir>,
+    #[prop(optional)]
+    extra_class: &'static str,
 ) -> impl IntoView {
     view! {
         <th
-            class="px-3 py-3 text-left cursor-pointer select-none \
-                   hover:text-gray-800 dark:hover:text-white transition-colors \
-                   whitespace-nowrap"
+            class=format!("px-3 py-3 text-left cursor-pointer select-none \
+                           hover:text-gray-800 dark:hover:text-white transition-colors \
+                           whitespace-nowrap {extra_class}")
             on:click=move |_| {
                 if sort_col.get() == col {
                     sort_dir.update(|d| *d = d.toggle());
