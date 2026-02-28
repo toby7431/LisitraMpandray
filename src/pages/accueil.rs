@@ -2,6 +2,7 @@ use js_sys::{Date, Function, Math, Promise};
 use leptos::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
+use crate::components::icons::PageIcon;
 use crate::services::db_service;
 
 // ─── Versets bibliques — sélection aléatoire à chaque ouverture ──────────────
@@ -171,7 +172,7 @@ pub fn Accueil() -> impl IntoView {
                             max-w-2xl mx-auto w-full px-4">
 
                 <StatCard
-                    icon="✝️"
+                    icon="cross"
                     title="Communiants"
                     subtitle="Membres actifs"
                     color_class="from-blue-500 to-indigo-600"
@@ -179,7 +180,7 @@ pub fn Accueil() -> impl IntoView {
                 />
 
                 <StatCard
-                    icon="📖"
+                    icon="book"
                     title="Cathécomènes"
                     subtitle="En formation"
                     color_class="from-emerald-500 to-teal-600"
@@ -236,10 +237,9 @@ fn StatCard(
             <div class=format!(
                 "w-12 h-12 sm:w-14 sm:h-14 rounded-xl \
                  bg-gradient-to-br {color_class} \
-                 flex items-center justify-center \
-                 text-xl sm:text-2xl shadow-sm"
+                 flex items-center justify-center shadow-sm"
             )>
-                {icon}
+                <PageIcon name=icon class="w-7 h-7 text-white" />
             </div>
 
             <div class="text-center">

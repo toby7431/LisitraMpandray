@@ -7,6 +7,7 @@ use js_sys::Promise;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::app::ToastCtx;
+use crate::components::icons::{IconBell, IconX};
 
 // ── Helper local ──────────────────────────────────────────────────────────────
 
@@ -101,7 +102,9 @@ pub fn YearToast() -> impl IntoView {
                 // ── Bande ambre : icône + titre + bouton fermer ────────────────
                 <div class="bg-gradient-to-r from-amber-500 to-orange-400 \
                             px-4 py-3 flex items-center gap-3">
-                    <span class="text-2xl bell-ring select-none">"🔔"</span>
+                    <div class="bell-ring select-none shrink-0">
+                        <IconBell class="w-6 h-6 text-white" />
+                    </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-white font-bold text-sm leading-tight">
                             "Année clôturée automatiquement"
@@ -112,11 +115,11 @@ pub fn YearToast() -> impl IntoView {
                     </div>
                     <button
                         on:click=close
-                        class="text-white/80 hover:text-white text-xl leading-none \
-                               flex-shrink-0 transition-colors duration-150"
+                        class="text-white/70 hover:text-white flex-shrink-0 \
+                               transition-colors duration-150 p-0.5 rounded"
                         aria-label="Fermer"
                     >
-                        "×"
+                        <IconX class="w-4 h-4" />
                     </button>
                 </div>
 

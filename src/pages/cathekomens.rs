@@ -6,7 +6,7 @@ pub fn Cathekomens() -> impl IntoView {
     view! {
         <MemberPage
             member_type="Cathekomen"
-            icon="📖"
+            icon="book"
             title="Cathécomènes"
             subtitle="Membres en cours de formation catéchétique"
             btn_class="bg-emerald-600 hover:bg-emerald-700"

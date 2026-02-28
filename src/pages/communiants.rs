@@ -6,7 +6,7 @@ pub fn Communiants() -> impl IntoView {
     view! {
         <MemberPage
             member_type="Communiant"
-            icon="✝️"
+            icon="cross"
             title="Communiants"
             subtitle="Membres communiants actifs de l'église"
             btn_class="bg-blue-600 hover:bg-blue-700"

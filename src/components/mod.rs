@@ -1,4 +1,5 @@
 pub mod contribution_modal;
+pub mod icons;
 pub mod member_page;
 pub mod navbar;
 pub mod phone_input;

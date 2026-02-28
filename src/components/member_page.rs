@@ -11,6 +11,11 @@ use wasm_bindgen_futures::JsFuture;
 use crate::{
     components::{
         contribution_modal::{ConfettiLayer, ContributionModal},
+        icons::{
+            IconAlertTriangle, IconChevronLeft, IconChevronRight, IconCoins,
+            IconCross, IconInfo, IconPencil, IconPlus, IconSearch, IconTrash,
+            IconTransfer, IconX, PageIcon,
+        },
         phone_input::PhoneInput,
     },
     models::member::{MemberInput, MemberWithTotal},
@@ -301,7 +306,8 @@ pub fn MemberPage(
                 <div>
                     <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white \
                                 flex items-center gap-2">
-                        {icon} " " {title}
+                        <PageIcon name=icon class="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                        {title}
                     </h1>
                     <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5">
                         {subtitle}
@@ -323,7 +329,7 @@ pub fn MemberPage(
                                        flex items-center gap-1.5 shadow-sm \
                                        animate-pulse-once"
                             >
-                                "✝️ "
+                                <IconTransfer class="w-4 h-4" />
                                 {format!("Transférer ({n})")}
                             </button>
                         })
@@ -335,7 +341,8 @@ pub fn MemberPage(
                                        duration-200 flex items-center gap-1.5 shadow-sm",
                                        btn_class)
                     >
-                        "➕ Nouveau membre"
+                        <IconPlus class="w-4 h-4" />
+                        " Nouveau membre"
                     </button>
                 </div>
             </div>
@@ -344,8 +351,8 @@ pub fn MemberPage(
             <div class="flex flex-wrap gap-2 sm:gap-3 items-center">
                 <div class="relative flex-1 min-w-[180px]">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 \
-                                 select-none text-sm pointer-events-none">
-                        "🔍"
+                                 pointer-events-none">
+                        <IconSearch class="w-4 h-4" />
                     </span>
                     <input
                         type="text"
@@ -398,8 +405,10 @@ pub fn MemberPage(
             {move || erreur.get().map(|e| view! {
                 <div class="p-3 bg-red-50 dark:bg-red-900/30 \
                             border border-red-200 dark:border-red-700 \
-                            rounded-xl text-red-700 dark:text-red-300 text-sm">
-                    "⚠️ " {e}
+                            rounded-xl text-red-700 dark:text-red-300 text-sm \
+                            flex items-start gap-2">
+                    <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{e}</span>
                 </div>
             })}
 
@@ -420,7 +429,9 @@ pub fn MemberPage(
                         <div class="bg-white/60 dark:bg-gray-800/60 backdrop-blur \
                                     rounded-2xl border border-gray-100 dark:border-gray-700 \
                                     text-center py-16 text-gray-400 dark:text-gray-500">
-                            <div class="text-5xl mb-3">{icon}</div>
+                            <div class="flex justify-center mb-3">
+                                <PageIcon name=icon class="w-12 h-12 text-gray-300 dark:text-gray-600" />
+                            </div>
                             <p class="text-base font-medium">"Aucun membre enregistré"</p>
                             <p class="text-xs mt-1">
                                 "Cliquez sur « Nouveau membre » pour commencer."
@@ -557,7 +568,7 @@ pub fn MemberPage(
                                                                         contrib_open.set(true);
                                                                     }
                                                                 >
-                                                                    "💰"
+                                                                    <IconCoins class="w-4 h-4" />
                                                                 </button>
                                                                 <button
                                                                     title="Modifier"
@@ -575,7 +586,7 @@ pub fn MemberPage(
                                                                         modal_ouvert.set(true);
                                                                     }
                                                                 >
-                                                                    "✏️"
+                                                                    <IconPencil class="w-4 h-4" />
                                                                 </button>
                                                                 <button
                                                                     title="Supprimer"
@@ -599,7 +610,7 @@ pub fn MemberPage(
                                                                         }
                                                                     }
                                                                 >
-                                                                    "🗑️"
+                                                                    <IconTrash class="w-4 h-4" />
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -633,7 +644,10 @@ pub fn MemberPage(
                                                disabled:opacity-40 disabled:cursor-not-allowed \
                                                hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                     >
-                                        "← Préc."
+                                        <span class="flex items-center gap-1">
+                                            <IconChevronLeft class="w-3.5 h-3.5" />
+                                            "Préc."
+                                        </span>
                                     </button>
                                     <span class="px-3 py-1.5 text-xs font-medium \
                                                  text-gray-700 dark:text-gray-300">
@@ -649,7 +663,10 @@ pub fn MemberPage(
                                                disabled:opacity-40 disabled:cursor-not-allowed \
                                                hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                     >
-                                        "Suiv. →"
+                                        <span class="flex items-center gap-1">
+                                            "Suiv."
+                                            <IconChevronRight class="w-3.5 h-3.5" />
+                                        </span>
                                     </button>
                                 </div>
                             </div>
@@ -685,10 +702,10 @@ pub fn MemberPage(
                                 <button
                                     on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
                                     class="text-gray-400 hover:text-gray-600 \
-                                           dark:hover:text-gray-200 text-xl leading-none \
-                                           transition-colors"
+                                           dark:hover:text-gray-200 transition-colors \
+                                           p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
-                                    "✕"
+                                    <IconX class="w-4 h-4" />
                                 </button>
                             </div>
 
@@ -758,8 +775,10 @@ pub fn MemberPage(
                                 {move || f_erreur.get().map(|e| view! {
                                     <div class="p-3 bg-red-50 dark:bg-red-900/30 \
                                                 border border-red-200 dark:border-red-700 \
-                                                rounded-xl text-red-700 dark:text-red-300 text-xs">
-                                        "⚠️ " {e}
+                                                rounded-xl text-red-700 dark:text-red-300 text-xs \
+                                                flex items-start gap-2">
+                                        <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+                                        <span>{e}</span>
                                     </div>
                                 })}
 
@@ -806,7 +825,9 @@ pub fn MemberPage(
                             // En-tête coloré
                             <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5">
                                 <div class="text-center">
-                                    <div class="text-4xl mb-1">"✝️"</div>
+                                    <div class="flex justify-center mb-2">
+                                        <IconCross class="w-10 h-10 text-white" />
+                                    </div>
                                     <h2 class="text-base font-bold text-white">
                                         "Confirmer le transfert"
                                     </h2>
@@ -825,7 +846,7 @@ pub fn MemberPage(
                                             bg-amber-50 dark:bg-amber-900/20 \
                                             border border-amber-200 dark:border-amber-700/50 \
                                             rounded-xl text-xs text-amber-700 dark:text-amber-300">
-                                    <span class="shrink-0">"ℹ️"</span>
+                                    <IconInfo class="w-4 h-4 shrink-0 mt-0.5" />
                                     <span>
                                         "Les contributions restent liées à ces membres — \
                                          leur historique est préservé."
@@ -835,8 +856,9 @@ pub fn MemberPage(
                                     <div class="p-3 bg-red-50 dark:bg-red-900/30 \
                                                 border border-red-200 dark:border-red-700 \
                                                 rounded-xl text-red-700 dark:text-red-300 \
-                                                text-xs text-center">
-                                        "⚠️ " {e}
+                                                text-xs flex items-start gap-2">
+                                        <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+                                        <span>{e}</span>
                                     </div>
                                 })}
                                 <div class="flex gap-3">
@@ -865,9 +887,14 @@ pub fn MemberPage(
                                                rounded-xl transition-colors shadow-sm"
                                     >
                                         {move || if transfer_loading.get() {
-                                            "Transfert en cours…"
+                                            view! { <span>"Transfert en cours…"</span> }.into_any()
                                         } else {
-                                            "✝️ Confirmer"
+                                            view! {
+                                                <span class="flex items-center gap-1.5">
+                                                    <IconCross class="w-4 h-4" />
+                                                    "Confirmer"
+                                                </span>
+                                            }.into_any()
                                         }}
                                     </button>
                                 </div>

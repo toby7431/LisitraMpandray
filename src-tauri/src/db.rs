@@ -138,8 +138,14 @@ pub struct Repository {
 impl Repository {
     /// Ouvre (ou crée) la base SQLite, active les FK, puis exécute les migrations.
     pub async fn new(db_path: &str) -> Result<Self, AppError> {
-        let options = SqliteConnectOptions::from_str(&format!("sqlite://{db_path}"))
-            .map_err(AppError::Db)?
+        // `filename()` prend un chemin OS (backslashes Windows OK, espaces OK).
+        // `from_str("sqlite://:memory:")` est conservé pour les tests en mémoire.
+        let base = if db_path == ":memory:" {
+            SqliteConnectOptions::from_str("sqlite://:memory:").map_err(AppError::Db)?
+        } else {
+            SqliteConnectOptions::new().filename(db_path)
+        };
+        let options = base
             .create_if_missing(true)
             .foreign_keys(true);
 
@@ -205,6 +211,43 @@ impl Repository {
             result.push(c);
         }
         format!("{} Ariary", result)
+    }
+
+    /// Variante transactionnelle de `refresh_year_total` — exécutée dans une tx ouverte.
+    /// Garantit que SELECT contributions + UPSERT year_summaries sont atomiques.
+    ///
+    /// `tx` est `&mut Transaction<'_, Sqlite>` ; pour obtenir `&mut SqliteConnection`
+    /// (seul type implémentant `Executor`), on double-déréférence : `&mut **tx`.
+    async fn refresh_year_total_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        year: i32,
+    ) -> Result<(), AppError> {
+        let rows = sqlx::query(
+            "SELECT amount FROM contributions WHERE recorded_year = ?",
+        )
+        .bind(year)
+        .fetch_all(&mut **tx)
+        .await?;
+
+        let total: Decimal = rows
+            .iter()
+            .filter_map(|r| {
+                let s: String = r.get("amount");
+                Decimal::from_str(&s).ok()
+            })
+            .fold(Decimal::ZERO, |acc, d| acc + d);
+
+        sqlx::query(
+            "INSERT INTO year_summaries (year, total)
+             VALUES (?, ?)
+             ON CONFLICT(year) DO UPDATE SET total = excluded.total",
+        )
+        .bind(year)
+        .bind(total.to_string())
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
     }
 
     /// Recalcule le total d'une année depuis les contributions, puis fait un UPSERT.
@@ -406,6 +449,11 @@ impl Repository {
         if ids.is_empty() {
             return Ok(0);
         }
+        if new_type != "Communiant" && new_type != "Cathekomen" {
+            return Err(AppError::Validation(
+                format!("Type de membre invalide : '{new_type}'. Valeurs acceptées : 'Communiant', 'Cathekomen'."),
+            ));
+        }
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
         let sql = format!(
             "UPDATE members SET member_type = ? WHERE id IN ({})",
@@ -453,6 +501,7 @@ impl Repository {
     }
 
     /// Cotisations d'une année avec le nom du membre (JOIN).
+    /// Triées par date ASC (la plus ancienne en tête) — cohérent avec l'affichage archives.
     pub async fn get_contributions_by_year_with_member(
         &self,
         year: i32,
@@ -463,7 +512,7 @@ impl Repository {
              FROM contributions c
              JOIN members m ON m.id = c.member_id
              WHERE c.recorded_year = ?
-             ORDER BY c.payment_date DESC",
+             ORDER BY c.payment_date ASC",
         )
         .bind(year)
         .fetch_all(&self.pool)
@@ -542,6 +591,10 @@ impl Repository {
                 ),
             ))?;
 
+        // Transaction : INSERT + refresh_year_total sont atomiques.
+        // Si refresh échoue, l'INSERT est annulé → pas d'incohérence.
+        let mut tx = self.pool.begin().await?;
+
         let row = sqlx::query(
             "INSERT INTO contributions (member_id, payment_date, period, amount, recorded_year)
              VALUES (?, ?, ?, ?, ?)
@@ -552,11 +605,12 @@ impl Repository {
         .bind(&input.period)
         .bind(amount.to_string())
         .bind(recorded_year)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await?;
 
-        // Mise à jour automatique du résumé annuel
-        self.refresh_year_total(recorded_year).await?;
+        Self::refresh_year_total_tx(&mut tx, recorded_year).await?;
+
+        tx.commit().await?;
 
         Ok(Contribution {
             id:            row.get("id"),
@@ -569,20 +623,24 @@ impl Repository {
     }
 
     pub async fn delete_contribution(&self, id: i64) -> Result<(), AppError> {
-        // Récupérer l'année avant suppression pour mettre à jour le total
+        // Transaction : SELECT year + DELETE + refresh_year_total sont atomiques.
+        // Si refresh échoue après DELETE, tout est annulé → total toujours cohérent.
+        let mut tx = self.pool.begin().await?;
+
         let row = sqlx::query("SELECT recorded_year FROM contributions WHERE id = ?")
             .bind(id)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut *tx)
             .await?;
         let year: i32 = row.get("recorded_year");
 
         sqlx::query("DELETE FROM contributions WHERE id = ?")
             .bind(id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
 
-        // Recalcul du total annuel
-        self.refresh_year_total(year).await?;
+        Self::refresh_year_total_tx(&mut tx, year).await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -614,12 +672,15 @@ impl Repository {
 
     /// Clôture une année : enregistre closed_at + note.
     /// Crée le résumé s'il n'existe pas encore.
+    /// Tout est atomique : refresh_year_total + UPDATE closed_at + lecture finale.
     pub async fn close_year(
         &self,
         year: i32,
         note: Option<String>,
     ) -> Result<YearSummary, AppError> {
-        self.refresh_year_total(year).await?;
+        let mut tx = self.pool.begin().await?;
+
+        Self::refresh_year_total_tx(&mut tx, year).await?;
 
         let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
         sqlx::query(
@@ -628,11 +689,21 @@ impl Repository {
         .bind(&now)
         .bind(&note)
         .bind(year)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
 
-        self.get_year_summary(year)
-            .await?
+        // Lire l'état final dans la même transaction (données cohérentes garanties)
+        let row = sqlx::query(
+            "SELECT year, total, closed_at, note FROM year_summaries WHERE year = ?",
+        )
+        .bind(year)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        row.as_ref()
+            .map(Self::map_year_summary)
             .ok_or_else(|| AppError::Validation(format!("Résumé pour {year} introuvable.")))
     }
 

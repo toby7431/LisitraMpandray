@@ -7,20 +7,32 @@ use leptos_router::{
     hooks::use_location,
 };
 
+use crate::components::icons::{
+    IconArchive, IconBookOpen, IconChurch, IconCross, IconHome,
+};
 use crate::components::theme_switcher::ThemeSwitcher;
 
 struct Tab {
     label: &'static str,
     path:  &'static str,
-    icon:  &'static str,
 }
 
 const TABS: &[Tab] = &[
-    Tab { label: "Accueil",      path: "/",            icon: "🏠" },
-    Tab { label: "Communiants",  path: "/communiants", icon: "✝️"  },
-    Tab { label: "Cathécomènes", path: "/cathekomens", icon: "📖" },
-    Tab { label: "Archives",     path: "/archives",    icon: "📦" },
+    Tab { label: "Accueil",      path: "/"            },
+    Tab { label: "Communiants",  path: "/communiants" },
+    Tab { label: "Cathécomènes", path: "/cathekomens" },
+    Tab { label: "Archives",     path: "/archives"    },
 ];
+
+fn tab_icon(i: usize) -> impl IntoView {
+    match i {
+        0 => view! { <IconHome     class="w-4 h-4" /> }.into_any(),
+        1 => view! { <IconCross    class="w-4 h-4" /> }.into_any(),
+        2 => view! { <IconBookOpen class="w-4 h-4" /> }.into_any(),
+        3 => view! { <IconArchive  class="w-4 h-4" /> }.into_any(),
+        _ => view! { <span /> }.into_any(),
+    }
+}
 
 fn active_index(pathname: &str) -> usize {
     TABS.iter()
@@ -51,7 +63,7 @@ pub fn Navbar() -> impl IntoView {
 
                     // ── Logo / Titre ───────────────────────────────────────────
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-xl sm:text-2xl" aria-hidden="true">"⛪"</span>
+                        <IconChurch class="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
                                 "Église Gestion"
@@ -71,24 +83,23 @@ pub fn Navbar() -> impl IntoView {
                             .map(|(i, tab)| {
                                 let path  = tab.path;
                                 let label = tab.label;
-                                let icon  = tab.icon;
                                 view! {
                                     <A
                                         href=path
                                         attr:class=move || {
-                                            let base = "flex items-center gap-1 px-2 sm:px-4 py-4 sm:py-5 \
+                                            let base = "flex items-center gap-1.5 px-2 sm:px-4 py-4 sm:py-5 \
                                                         text-xs sm:text-sm font-medium transition-colors \
                                                         duration-200 whitespace-nowrap shrink-0";
                                             if idx.get() == i {
                                                 format!("{base} text-blue-600 dark:text-blue-400")
                                             } else {
-                                                format!("{base} text-gray-600 dark:text-gray-300 \
+                                                format!("{base} text-gray-500 dark:text-gray-400 \
                                                          hover:text-blue-500 dark:hover:text-blue-300")
                                             }
                                         }
                                     >
-                                        // Icône toujours visible
-                                        <span class="text-base leading-none">{icon}</span>
+                                        // Icône SVG — hérite la couleur du parent via currentColor
+                                        {tab_icon(i)}
                                         // Label masqué sur mobile, visible à partir de sm
                                         <span class="hidden sm:inline">{label}</span>
                                     </A>

@@ -2,6 +2,9 @@
 use leptos::prelude::*;
 
 use crate::{
+    components::icons::{
+        IconAlertTriangle, IconArchive, IconFileText, IconLock, IconSearch,
+    },
     models::{
         contribution::ContributionWithMember,
         year_summary::YearSummary,
@@ -93,7 +96,7 @@ pub fn Archives() -> impl IntoView {
         summaries.get().into_iter().find(|s| s.year == sel)
     });
 
-    // ── Cotisations filtrées par nom de membre ────────────────────────────────
+    // ── Cotisations filtrées par nom (déjà triées ASC par le backend) ────────────
     let filtered = Memo::new(move |_| {
         let q = recherche.get().to_lowercase();
         contributions.get()
@@ -107,8 +110,10 @@ pub fn Archives() -> impl IntoView {
 
             // ── En-tête ───────────────────────────────────────────────────────
             <div>
-                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
-                    "📦 Archives — Cotisations par année"
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white \
+                            flex items-center gap-2">
+                    <IconArchive class="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                    "Archives — Cotisations par année"
                 </h1>
                 <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
                     "Sélectionnez une année pour consulter les cotisations et le résumé annuel."
@@ -119,8 +124,10 @@ pub fn Archives() -> impl IntoView {
             {move || erreur.get().map(|e| view! {
                 <div class="p-3 sm:p-4 bg-red-50 dark:bg-red-900/30 \
                             border border-red-200 dark:border-red-700 \
-                            rounded-xl text-red-700 dark:text-red-300 text-sm">
-                    "⚠️ " {e}
+                            rounded-xl text-red-700 dark:text-red-300 text-sm \
+                            flex items-start gap-2">
+                    <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{e}</span>
                 </div>
             })}
 
@@ -162,20 +169,21 @@ pub fn Archives() -> impl IntoView {
                                  transition-all duration-200 backdrop-blur"
                             };
 
-                            let label = if is_current && !is_closed {
-                                format!("{} ✦", y)
-                            } else if is_closed {
-                                format!("{} 🔒", y)
-                            } else {
-                                y.to_string()
-                            };
-
                             view! {
                                 <button
                                     class={btn_cls}
                                     on:click=move |_| selected_year.set(y)
                                 >
-                                    {label}
+                                    <span class="flex items-center gap-1">
+                                        {if is_current && !is_closed {
+                                            format!("{} ✦", y)
+                                        } else {
+                                            y.to_string()
+                                        }}
+                                        {is_closed.then(|| view! {
+                                            <IconLock class="w-3 h-3 opacity-80" />
+                                        })}
+                                    </span>
                                 </button>
                             }
                         }).collect_view()}
@@ -186,8 +194,8 @@ pub fn Archives() -> impl IntoView {
             // ── Barre de recherche ────────────────────────────────────────────
             <div class="relative max-w-xs">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 \
-                             text-gray-400 dark:text-gray-500 pointer-events-none text-sm">
-                    "🔍"
+                             text-gray-400 dark:text-gray-500 pointer-events-none">
+                    <IconSearch class="w-4 h-4" />
                 </span>
                 <input
                     type="text"
@@ -226,7 +234,7 @@ pub fn Archives() -> impl IntoView {
                                             border border-amber-200 dark:border-amber-700/50 \
                                             rounded-2xl p-4 sm:p-5">
                                     <div class="flex flex-wrap items-start gap-3">
-                                        <span class="text-2xl">"🔒"</span>
+                                        <IconLock class="w-6 h-6 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                                         <div class="flex-1 min-w-0">
                                             <p class="font-semibold \
                                                        text-amber-800 dark:text-amber-300">
@@ -293,11 +301,11 @@ pub fn Archives() -> impl IntoView {
                                 }.into_any();
                             }
                             if filtered.get().is_empty() {
-                                let (icon, msg, sub) = if contributions.get().is_empty() {
-                                    ("📄", "Aucune cotisation enregistrée",
+                                let (is_empty_data, msg, sub) = if contributions.get().is_empty() {
+                                    (true, "Aucune cotisation enregistrée",
                                      format!("pour l'année {}", selected_year.get()))
                                 } else {
-                                    ("🔍", "Aucun résultat",
+                                    (false, "Aucun résultat",
                                      format!("aucun membre ne correspond à \"{}\"",
                                              recherche.get()))
                                 };
@@ -306,7 +314,13 @@ pub fn Archives() -> impl IntoView {
                                                 rounded-2xl border border-gray-100 \
                                                 dark:border-gray-700 text-center py-14 \
                                                 text-gray-400 dark:text-gray-500">
-                                        <div class="text-3xl mb-2">{icon}</div>
+                                        <div class="flex justify-center mb-3">
+                                            {if is_empty_data {
+                                                view! { <IconFileText class="w-10 h-10 text-gray-300 dark:text-gray-600" /> }.into_any()
+                                            } else {
+                                                view! { <IconSearch class="w-10 h-10 text-gray-300 dark:text-gray-600" /> }.into_any()
+                                            }}
+                                        </div>
                                         <p class="text-base font-medium">{msg}</p>
                                         <p class="text-xs mt-1">{sub}</p>
                                     </div>

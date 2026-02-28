@@ -4,7 +4,11 @@ use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
-use crate::{models::contribution::ContributionInput, services::db_service};
+use crate::{
+    components::icons::{IconAlertTriangle, IconSave, IconX},
+    models::contribution::ContributionInput,
+    services::db_service,
+};
 
 // ─── Palette confetti ─────────────────────────────────────────────────────────
 
@@ -281,9 +285,10 @@ pub fn ContributionModal(
                     <button
                         on:click=move |_| { leptos::task::spawn_local(async move { open.set(false); }); }
                         class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 \
-                               text-xl leading-none transition-colors"
+                               transition-colors p-1 rounded-lg hover:bg-gray-100 \
+                               dark:hover:bg-gray-700"
                     >
-                        "✕"
+                        <IconX class="w-4 h-4" />
                     </button>
                 </div>
 
@@ -354,8 +359,10 @@ pub fn ContributionModal(
                     {move || f_erreur.get().map(|e| view! {
                         <div class="p-3 bg-red-50 dark:bg-red-900/30 \
                                     border border-red-200 dark:border-red-700 \
-                                    rounded-xl text-red-700 dark:text-red-300 text-xs">
-                            "⚠️ " {e}
+                                    rounded-xl text-red-700 dark:text-red-300 text-xs \
+                                    flex items-start gap-2">
+                            <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>{e}</span>
                         </div>
                     })}
 
@@ -380,7 +387,16 @@ pub fn ContributionModal(
                                    disabled:opacity-60 disabled:cursor-wait \
                                    rounded-xl transition-colors shadow-sm"
                         >
-                            {move || if f_loading.get() { "Enregistrement…" } else { "💾 Enregistrer" }}
+                            {move || if f_loading.get() {
+                            view! { <span>"Enregistrement…"</span> }.into_any()
+                        } else {
+                            view! {
+                                <span class="flex items-center gap-1.5">
+                                    <IconSave class="w-4 h-4" />
+                                    "Enregistrer"
+                                </span>
+                            }.into_any()
+                        }}
                         </button>
                     </div>
                 </form>

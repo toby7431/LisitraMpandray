@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
 use crate::app::{Theme, ThemeCtx};
+use crate::components::icons::{IconMoon, IconMonitor, IconSun};
 
 #[component]
 pub fn ThemeSwitcher() -> impl IntoView {
@@ -27,9 +28,11 @@ pub fn ThemeSwitcher() -> impl IntoView {
                    hover:bg-white dark:hover:bg-gray-700 \
                    transition-all duration-200 text-sm font-medium select-none"
         >
-            <span class="text-base leading-none">
-                {move || ctx.theme.get().icon()}
-            </span>
+            {move || match ctx.theme.get() {
+                Theme::Light  => view! { <IconSun     class="w-4 h-4" /> }.into_any(),
+                Theme::Dark   => view! { <IconMoon    class="w-4 h-4" /> }.into_any(),
+                Theme::System => view! { <IconMonitor class="w-4 h-4" /> }.into_any(),
+            }}
             <span class="hidden sm:inline">
                 {move || ctx.theme.get().label()}
             </span>
