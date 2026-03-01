@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::app::{Theme, ThemeCtx};
+use crate::theme::{Theme, ThemeCtx};
 use crate::components::icons::{IconMoon, IconMonitor, IconSun};
 
 #[component]

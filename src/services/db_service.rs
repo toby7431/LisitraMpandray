@@ -46,7 +46,6 @@ fn to_js<T: Serialize>(val: &T) -> JsValue {
 
 // ─── Member ───────────────────────────────────────────────────────────────────
 
-#[allow(dead_code)]
 pub async fn get_members() -> Result<Vec<Member>, String> {
     let res = invoke("get_members", to_js(&serde_json::json!({}))).await?;
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
@@ -72,7 +71,6 @@ pub async fn get_members_by_type_with_total(
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
 
-#[allow(dead_code)]
 pub async fn get_member(id: i64) -> Result<Member, String> {
     let res = invoke("get_member", to_js(&serde_json::json!({ "id": id }))).await?;
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
@@ -109,7 +107,6 @@ pub async fn transfer_members(ids: &[i64], new_type: &str) -> Result<usize, Stri
 
 // ─── Contribution ─────────────────────────────────────────────────────────────
 
-#[allow(dead_code)]
 pub async fn get_contributions(member_id: i64) -> Result<Vec<Contribution>, String> {
     let res = invoke(
         "get_contributions",
@@ -119,7 +116,6 @@ pub async fn get_contributions(member_id: i64) -> Result<Vec<Contribution>, Stri
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
 
-#[allow(dead_code)]
 pub async fn get_contributions_by_year(year: i32) -> Result<Vec<Contribution>, String> {
     let res = invoke(
         "get_contributions_by_year",
@@ -138,7 +134,6 @@ pub async fn create_contribution(input: &ContributionInput) -> Result<Contributi
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
 
-#[allow(dead_code)]
 pub async fn delete_contribution(id: i64) -> Result<(), String> {
     invoke(
         "delete_contribution",
@@ -175,7 +170,6 @@ pub async fn get_year_summary(year: i32) -> Result<Option<YearSummary>, String> 
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
 
-#[allow(dead_code)]
 pub async fn close_year(year: i32, note: Option<String>) -> Result<YearSummary, String> {
     let res = invoke(
         "close_year",
@@ -185,7 +179,6 @@ pub async fn close_year(year: i32, note: Option<String>) -> Result<YearSummary, 
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
 }
 
-#[allow(dead_code)]
 pub async fn reopen_year(year: i32) -> Result<YearSummary, String> {
     let res = invoke("reopen_year", to_js(&serde_json::json!({ "year": year }))).await?;
     serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())

@@ -13,7 +13,7 @@ use leptos::prelude::*;
 use wasm_bindgen::{prelude::*, JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use crate::app::{Theme, ThemeCtx};
+use crate::theme::{Theme, ThemeCtx};
 
 // ─── Thread-locals ────────────────────────────────────────────────────────────
 

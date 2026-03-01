@@ -1,0 +1,27 @@
+{
+  "name": "eglisemanager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toby7431/LisitraMpandray.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/toby7431/LisitraMpandray/issues"
+  },
+  "homepage": "https://github.com/toby7431/LisitraMpandray#readme",
+  "devDependencies": {
+    "@fontsource/cinzel": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/playfair-display": "^5.2.8",
+    "tailwindcss": "^4.2.1"
+  }
+}

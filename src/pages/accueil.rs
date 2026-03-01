@@ -1,9 +1,9 @@
-use js_sys::{Date, Function, Math, Promise};
+use js_sys::{Date, Math};
 use leptos::prelude::*;
-use wasm_bindgen_futures::JsFuture;
 
 use crate::components::icons::PageIcon;
 use crate::services::db_service;
+use crate::utils::{format_ariary, sleep_ms};
 
 // ─── Versets bibliques — sélection aléatoire à chaque ouverture ──────────────
 
@@ -38,33 +38,7 @@ const VERSES: &[(&str, &str)] = &[
       mais la plus grande de ces choses, c'est la charité."),
 ];
 
-// ─── Formatage des montants en Ariary ────────────────────────────────────────
-
-fn format_ariary(n: i64) -> String {
-    let s = n.to_string();
-    let len = s.len();
-    let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        // Insère une espace tous les 3 chiffres en partant de la droite
-        if i > 0 && (len - i) % 3 == 0 {
-            result.push(' ');
-        }
-        result.push(c);
-    }
-    format!("{} Ar", result)
-}
-
 // ─── Helpers async ────────────────────────────────────────────────────────────
-
-async fn sleep_ms(ms: u32) {
-    let promise = Promise::new(&mut |resolve: Function, _: Function| {
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32)
-            .unwrap();
-    });
-    let _ = JsFuture::from(promise).await;
-}
 
 async fn animate_count(signal: RwSignal<usize>, target: usize) {
     if target == 0 {
@@ -208,7 +182,7 @@ pub fn Accueil() -> impl IntoView {
                     </div>
                     <p class="text-2xl sm:text-3xl font-bold font-mono \
                                text-gray-800 dark:text-white shrink-0">
-                        {move || format_ariary(contributions_display.get())}
+                        {move || format_ariary(&contributions_display.get().to_string())}
                     </p>
                 </div>
             </section>

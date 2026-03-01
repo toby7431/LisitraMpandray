@@ -3,6 +3,8 @@ mod components;
 mod models;
 mod pages;
 mod services;
+mod theme;
+mod utils;
 
 use wasm_bindgen::prelude::*;
 

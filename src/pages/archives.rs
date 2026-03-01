@@ -10,23 +10,10 @@ use crate::{
         year_summary::YearSummary,
     },
     services::db_service,
+    utils::format_ariary,
 };
 
 // ── Helpers locaux ────────────────────────────────────────────────────────────
-
-fn format_ariary(amount_str: &str) -> String {
-    let n = amount_str.parse::<f64>().unwrap_or(0.0) as i64;
-    let s = n.to_string();
-    let len = s.len();
-    let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if i > 0 && (len - i) % 3 == 0 {
-            result.push(' ');
-        }
-        result.push(c);
-    }
-    format!("{} Ar", result)
-}
 
 /// Année courante depuis JS (WASM-compatible).
 fn current_year() -> i32 {

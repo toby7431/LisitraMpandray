@@ -3,41 +3,10 @@
 /// Affiché en bas à droite quand `ToastCtx.data` passe à `Some(YearSummary)`.
 /// Auto-dismiss après 8 s (7.6 s affichage + 0.4 s animation de sortie).
 use leptos::prelude::*;
-use js_sys::Promise;
-use wasm_bindgen_futures::JsFuture;
 
-use crate::app::ToastCtx;
 use crate::components::icons::{IconBell, IconX};
-
-// ── Helper local ──────────────────────────────────────────────────────────────
-
-async fn sleep_ms(ms: u32) {
-    let p = Promise::new(&mut |resolve, _| {
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                &resolve,
-                ms as i32,
-            )
-            .unwrap();
-    });
-    let _ = JsFuture::from(p).await;
-}
-
-/// Formate une chaîne Decimal en "1 234 567 Ar" (partie entière uniquement).
-fn format_ariary(amount_str: &str) -> String {
-    let n = amount_str.parse::<f64>().unwrap_or(0.0) as i64;
-    let s = n.to_string();
-    let len = s.len();
-    let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if i > 0 && (len - i) % 3 == 0 {
-            result.push(' ');
-        }
-        result.push(c);
-    }
-    format!("{} Ar", result)
-}
+use crate::theme::ToastCtx;
+use crate::utils::{format_ariary, sleep_ms};
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 

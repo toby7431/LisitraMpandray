@@ -1,84 +1,24 @@
 /// Composant générique pour Communiants et Cathécomènes.
 ///
-/// Tableau complet : N° carte, Nom, Adresse, Téléphone, Travail, Genre, Total contributions.
-/// Recherche live, tri par colonne, filtre genre, pagination, formulaire CRUD modal.
-/// Optionnel : multi-sélection + bouton "Transférer sélectionnés" (Cathécomènes → Communiants).
-use js_sys::{Function, Promise};
-use leptos::portal::Portal;
+/// Orchestre la liste, les filtres, la pagination, le formulaire CRUD
+/// et la modale de transfert. Délègue le rendu aux sous-composants :
+/// `MemberTable`, `MemberForm`, `TransferModal`, `ContributionModal`.
 use leptos::prelude::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::JsFuture;
 
 use crate::{
     components::{
         contribution_modal::{ConfettiLayer, ContributionModal},
-        icons::{
-            IconAlertTriangle, IconChevronLeft, IconChevronRight, IconCoins,
-            IconCross, IconInfo, IconPencil, IconPlus, IconSearch, IconTrash,
-            IconTransfer, IconX, PageIcon,
-        },
-        phone_input::PhoneInput,
+        icons::{IconAlertTriangle, IconPlus, IconSearch, IconTransfer, PageIcon},
+        member_form::MemberForm,
+        member_table::{MemberTable, SortCol, SortDir},
+        transfer_modal::TransferModal,
     },
-    models::member::{MemberInput, MemberWithTotal},
+    models::member::MemberWithTotal,
     services::db_service,
+    utils::sleep_ms,
 };
 
 const PAGE_SIZE: usize = 15;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async fn sleep_ms(ms: u32) {
-    let promise = Promise::new(&mut |resolve: Function, _: Function| {
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32)
-            .unwrap();
-    });
-    let _ = JsFuture::from(promise).await;
-}
-
-fn format_ariary(total_str: &str) -> String {
-    let n: i64 = total_str.parse::<f64>().unwrap_or(0.0) as i64;
-    let s = n.to_string();
-    let len = s.len();
-    let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if i > 0 && (len - i) % 3 == 0 {
-            result.push('\u{202f}');
-        }
-        result.push(c);
-    }
-    format!("{}\u{202f}Ar", result)
-}
-
-fn non_empty(s: String) -> Option<String> {
-    let t = s.trim().to_string();
-    if t.is_empty() { None } else { Some(t) }
-}
-
-fn checked_from_event(ev: web_sys::Event) -> bool {
-    ev.target()
-        .and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
-        .map(|el| el.checked())
-        .unwrap_or(false)
-}
-
-// ─── Tri ──────────────────────────────────────────────────────────────────────
-
-#[derive(Clone, Copy, PartialEq)]
-enum SortCol { Carte, Nom, Adresse, Telephone, Travail, Genre, Total }
-
-#[derive(Clone, Copy, PartialEq)]
-enum SortDir { Asc, Desc }
-
-impl SortDir {
-    fn toggle(self) -> Self {
-        match self { Self::Asc => Self::Desc, Self::Desc => Self::Asc }
-    }
-    fn arrow(self) -> &'static str {
-        match self { Self::Asc => " ↑", Self::Desc => " ↓" }
-    }
-}
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
@@ -90,13 +30,13 @@ pub fn MemberPage(
     subtitle:    &'static str,
     /// Classes Tailwind pour le bouton principal (ex: "bg-blue-600 hover:bg-blue-700")
     btn_class:   &'static str,
-    /// Classe hover sur les lignes du tableau (ex: "hover:bg-blue-50/50 ...")
+    /// Classe hover sur les lignes du tableau
     row_hover:   &'static str,
-    /// Couleur des liens/boutons texte (ex: "text-blue-600 dark:text-blue-400")
+    /// Couleur des liens/boutons texte
     link_class:  &'static str,
-    /// Couleur du spinner (ex: "border-blue-500")
+    /// Couleur du spinner
     spin_class:  &'static str,
-    /// Si Some("Communiant") : active la multi-sélection + bouton "Transférer"
+    /// Si `Some("Communiant")` : active la multi-sélection + bouton "Transférer"
     #[prop(optional)]
     transfer_to: Option<&'static str>,
 ) -> impl IntoView {
@@ -116,7 +56,6 @@ pub fn MemberPage(
         }
     });
 
-    // Déclencheur de rechargement (incrémenter pour rafraîchir)
     let refresh_ctr: RwSignal<u32> = RwSignal::new(0);
 
     Effect::new(move |_| {
@@ -138,7 +77,6 @@ pub fn MemberPage(
     let sort_dir:     RwSignal<SortDir> = RwSignal::new(SortDir::Asc);
     let page:         RwSignal<usize>   = RwSignal::new(0);
 
-    // Reset page + sélection quand la recherche ou le filtre change
     let selected: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
     Effect::new(move |_| {
         let _ = recherche.get();
@@ -200,27 +138,25 @@ pub fn MemberPage(
             .collect::<Vec<_>>()
     });
 
-    // ── Sélection et transfert ─────────────────────────────────────────────────
-    let transferring_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
-    let transfer_modal:   RwSignal<bool> = RwSignal::new(false);
-    let transfer_loading: RwSignal<bool> = RwSignal::new(false);
-
     let all_page_selected = Memo::new(move |_| {
         let items = page_items.get();
         !items.is_empty() && items.iter().all(|m| selected.get().contains(&m.id))
     });
 
-    let do_transfer = move || {
+    // ── Transfert ──────────────────────────────────────────────────────────────
+    let transferring_ids: RwSignal<Vec<i64>> = RwSignal::new(vec![]);
+    let transfer_modal:   RwSignal<bool> = RwSignal::new(false);
+    let transfer_loading: RwSignal<bool> = RwSignal::new(false);
+
+    let do_transfer = Callback::new(move |()| {
         let ids = selected.get();
         if ids.is_empty() { return; }
         let target = match transfer_to { Some(t) => t, None => return };
         transfer_loading.set(true);
-        // Lance l'animation immédiatement
         transferring_ids.set(ids.clone());
         leptos::task::spawn_local(async move {
-            // Appel DB et attente d'animation en parallèle
             let result = db_service::transfer_members(&ids, target).await;
-            sleep_ms(400).await; // garantit que l'animation (380ms) se termine
+            sleep_ms(400).await;
             match result {
                 Ok(_) => {
                     transfer_modal.set(false);
@@ -235,12 +171,11 @@ pub fn MemberPage(
             }
             transfer_loading.set(false);
         });
-    };
+    });
 
-    // ── Modal / Formulaire ─────────────────────────────────────────────────────
+    // ── Formulaire membre ──────────────────────────────────────────────────────
     let modal_ouvert: RwSignal<bool>        = RwSignal::new(false);
     let edit_id:      RwSignal<Option<i64>> = RwSignal::new(None);
-
     let f_carte:     RwSignal<String> = RwSignal::new(String::new());
     let f_nom:       RwSignal<String> = RwSignal::new(String::new());
     let f_adresse:   RwSignal<String> = RwSignal::new(String::new());
@@ -248,12 +183,6 @@ pub fn MemberPage(
     let f_travail:   RwSignal<String> = RwSignal::new(String::new());
     let f_genre:     RwSignal<String> = RwSignal::new("M".into());
     let f_loading:   RwSignal<bool>   = RwSignal::new(false);
-
-    // ── Modal Cotisation ───────────────────────────────────────────────────────
-    let contrib_open:       RwSignal<bool>   = RwSignal::new(false);
-    let contrib_membre_id:  RwSignal<i64>    = RwSignal::new(0);
-    let contrib_membre_nom: RwSignal<String> = RwSignal::new(String::new());
-    let confetti_active:    RwSignal<bool>   = RwSignal::new(false);
 
     let reset_form = move || {
         f_carte.set(String::new());
@@ -265,42 +194,11 @@ pub fn MemberPage(
         edit_id.set(None);
     };
 
-    let soumettre = move |ev: leptos::ev::SubmitEvent| {
-        ev.prevent_default();
-        let phone_val = f_telephone.get();
-        let phone = if phone_val.trim() == "+261" || phone_val.trim().len() <= 5 {
-            None
-        } else {
-            Some(phone_val.trim().to_string())
-        };
-
-        let input = MemberInput {
-            card_number: f_carte.get().trim().to_string(),
-            full_name:   f_nom.get().trim().to_string(),
-            address:     non_empty(f_adresse.get()),
-            phone,
-            job:         non_empty(f_travail.get()),
-            gender:      f_genre.get(),
-            member_type: member_type.to_string(),
-        };
-        f_loading.set(true);
-        let eid = edit_id.get();
-        leptos::task::spawn_local(async move {
-            let res = if let Some(id) = eid {
-                db_service::update_member(id, &input).await.map(|_| ())
-            } else {
-                db_service::create_member(&input).await.map(|_| ())
-            };
-            match res {
-                Ok(_) => {
-                    modal_ouvert.set(false);
-                    refresh_ctr.update(|n| *n += 1);
-                }
-                Err(e) => notif_error.set(Some(e)),
-            }
-            f_loading.set(false);
-        });
-    };
+    // ── Modal cotisation ───────────────────────────────────────────────────────
+    let contrib_open:       RwSignal<bool>   = RwSignal::new(false);
+    let contrib_membre_id:  RwSignal<i64>    = RwSignal::new(0);
+    let contrib_membre_nom: RwSignal<String> = RwSignal::new(String::new());
+    let confetti_active:    RwSignal<bool>   = RwSignal::new(false);
 
     // ─── Vue ──────────────────────────────────────────────────────────────────
     view! {
@@ -320,7 +218,7 @@ pub fn MemberPage(
                         class="btn-ripple text-red-400 hover:text-red-600 \
                                dark:hover:text-red-200 rounded p-0.5 transition-colors"
                     >
-                        <IconX class="w-4 h-4" />
+                        "✕"
                     </button>
                 </div>
             })}
@@ -337,9 +235,7 @@ pub fn MemberPage(
                         {subtitle}
                     </p>
                 </div>
-                // Boutons d'action groupés
                 <div class="flex items-center gap-2 flex-wrap shrink-0">
-                    // Bouton "Transférer" — visible seulement si sélection non vide
                     {move || {
                         if transfer_to.is_none() { return None; }
                         let n = selected.get().len();
@@ -409,7 +305,6 @@ pub fn MemberPage(
                         format!("{n} membre{}", if n > 1 { "s" } else { "" })
                     }}
                 </span>
-                // Compteur de sélection
                 {move || {
                     if transfer_to.is_none() { return None; }
                     let n = selected.get().len();
@@ -424,499 +319,69 @@ pub fn MemberPage(
                 }}
             </div>
 
-            // ── Contenu principal ──────────────────────────────────────────────
-            {move || {
-                if loading.get() {
-                    view! {
-                        <div class="flex justify-center py-16">
-                            <div class=format!(
-                                "w-8 h-8 border-4 {} border-t-transparent \
-                                 rounded-full animate-spin", spin_class
-                            ) />
-                        </div>
-                    }.into_any()
-
-                } else if membres.get().is_empty() {
-                    view! {
-                        <div class="bg-white/60 dark:bg-gray-800/60 backdrop-blur \
-                                    rounded-2xl border border-gray-100 dark:border-gray-700 \
-                                    text-center py-16 text-gray-400 dark:text-gray-500">
-                            <div class="flex justify-center mb-3">
-                                <PageIcon name=icon class="w-12 h-12 text-gray-300 dark:text-gray-600" />
-                            </div>
-                            <p class="text-base font-medium">"Aucun membre enregistré"</p>
-                            <p class="text-xs mt-1">
-                                "Cliquez sur « Nouveau membre » pour commencer."
-                            </p>
-                        </div>
-                    }.into_any()
-
-                } else {
-                    view! {
-                        <div class="space-y-3">
-                            // ── Tableau ──────────────────────────────────────────
-                            <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                        rounded-2xl border border-gray-100 dark:border-gray-700 \
-                                        overflow-hidden shadow-sm">
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-sm">
-                                        <thead>
-                                            <tr class="bg-gray-50/80 dark:bg-gray-900/50 \
-                                                       border-b border-gray-100 dark:border-gray-700 \
-                                                       text-gray-600 dark:text-gray-400 font-semibold">
-                                                // ── Colonne checkbox (seulement si transfer_to)
-                                                {transfer_to.map(|_| view! {
-                                                    <th class="pl-4 pr-2 py-3 w-10">
-                                                        <input
-                                                            type="checkbox"
-                                                            class="custom-check"
-                                                            title="Tout sélectionner"
-                                                            prop:checked=move || all_page_selected.get()
-                                                            on:change=move |ev: web_sys::Event| {
-                                                                let checked = checked_from_event(ev);
-                                                                let items   = page_items.get();
-                                                                selected.update(|s| {
-                                                                    if checked {
-                                                                        for m in &items {
-                                                                            if !s.contains(&m.id) {
-                                                                                s.push(m.id);
-                                                                            }
-                                                                        }
-                                                                    } else {
-                                                                        let ids: Vec<i64> = items.iter().map(|m| m.id).collect();
-                                                                        s.retain(|id| !ids.contains(id));
-                                                                    }
-                                                                });
-                                                            }
-                                                        />
-                                                    </th>
-                                                })}
-                                                <Th label="N° Carte"        col=SortCol::Carte     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                                <Th label="Nom complet"     col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
-                                                <Th label="Adresse"         col=SortCol::Adresse   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
-                                                <Th label="Téléphone"       col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir extra_class="hidden lg:table-cell" />
-                                                <Th label="Travail"         col=SortCol::Travail   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
-                                                <Th label="Genre"           col=SortCol::Genre     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                                <Th label="Total cotis."    col=SortCol::Total     sort_col=sort_col sort_dir=sort_dir />
-                                                <th class="px-3 py-3 text-right pr-4">"Actions"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <For
-                                                each=move || page_items.get()
-                                                key=|m| m.id
-                                                children=move |m: MemberWithTotal| {
-                                                    let m_edit = m.clone();
-                                                    let mid    = m.id;
-                                                    let total  = format_ariary(&m.total_contributions);
-                                                    let genre_label = if m.gender == "M" { "♂ Homme" } else { "♀ Femme" };
-
-                                                    view! {
-                                                        <tr class=move || {
-                                                            let sliding = transferring_ids.get().contains(&mid);
-                                                            format!(
-                                                                "tr-hover border-b border-gray-50 \
-                                                                 dark:border-gray-700/50 \
-                                                                 {} transition-colors duration-150{}",
-                                                                row_hover,
-                                                                if sliding { " row-sliding-out" } else { "" }
-                                                            )
-                                                        }>
-                                                            // ── Checkbox (seulement si transfer_to)
-                                                            {transfer_to.map(|_| view! {
-                                                                <td class="pl-4 pr-2 py-2.5">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        class="custom-check"
-                                                                        prop:checked=move || selected.get().contains(&mid)
-                                                                        on:change=move |ev: web_sys::Event| {
-                                                                            let checked = checked_from_event(ev);
-                                                                            selected.update(|s| {
-                                                                                if checked {
-                                                                                    if !s.contains(&mid) { s.push(mid); }
-                                                                                } else {
-                                                                                    s.retain(|&id| id != mid);
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    />
-                                                                </td>
-                                                            })}
-                                                            <td class="hidden sm:table-cell px-3 py-2.5 \
-                                                                       font-mono text-xs \
-                                                                       text-gray-500 dark:text-gray-400 \
-                                                                       whitespace-nowrap">
-                                                                {m.card_number.clone()}
-                                                            </td>
-                                                            <td class="px-3 py-2.5 font-semibold \
-                                                                       text-gray-800 dark:text-white \
-                                                                       whitespace-nowrap">
-                                                                {m.full_name.clone()}
-                                                            </td>
-                                                            <td class="hidden md:table-cell px-3 py-2.5 \
-                                                                       text-gray-600 dark:text-gray-300 \
-                                                                       max-w-[140px] truncate">
-                                                                {m.address.clone().unwrap_or_else(|| "—".into())}
-                                                            </td>
-                                                            <td class="hidden lg:table-cell px-3 py-2.5 \
-                                                                       text-gray-600 dark:text-gray-300 \
-                                                                       whitespace-nowrap">
-                                                                {m.phone.clone().unwrap_or_else(|| "—".into())}
-                                                            </td>
-                                                            <td class="hidden md:table-cell px-3 py-2.5 \
-                                                                       text-gray-600 dark:text-gray-300 \
-                                                                       max-w-[120px] truncate">
-                                                                {m.job.clone().unwrap_or_else(|| "—".into())}
-                                                            </td>
-                                                            <td class="hidden sm:table-cell px-3 py-2.5 \
-                                                                       text-gray-600 dark:text-gray-300 \
-                                                                       whitespace-nowrap">
-                                                                {genre_label}
-                                                            </td>
-                                                            <td class="px-3 py-2.5 font-mono font-semibold \
-                                                                       text-gray-800 dark:text-white \
-                                                                       whitespace-nowrap">
-                                                                {total}
-                                                            </td>
-                                                            <td class="px-3 py-2.5 pr-4 text-right whitespace-nowrap">
-                                                                <button
-                                                                    title="Cotisation"
-                                                                    class="btn-ripple mr-2 text-xs text-amber-500 \
-                                                                           dark:text-amber-400 rounded \
-                                                                           hover:scale-125 transition-transform \
-                                                                           duration-150 font-medium"
-                                                                    on:click=move |_| {
-                                                                        contrib_membre_id.set(mid);
-                                                                        contrib_membre_nom.set(m.full_name.clone());
-                                                                        contrib_open.set(true);
-                                                                    }
-                                                                >
-                                                                    <IconCoins class="w-4 h-4" />
-                                                                </button>
-                                                                <button
-                                                                    title="Modifier"
-                                                                    class=format!("btn-ripple mr-2 text-xs {} \
-                                                                                   rounded hover:scale-125 \
-                                                                                   transition-transform duration-150 \
-                                                                                   font-medium", link_class)
-                                                                    on:click=move |_| {
-                                                                        edit_id.set(Some(m_edit.id));
-                                                                        f_carte.set(m_edit.card_number.clone());
-                                                                        f_nom.set(m_edit.full_name.clone());
-                                                                        f_adresse.set(m_edit.address.clone().unwrap_or_default());
-                                                                        f_telephone.set(m_edit.phone.clone().unwrap_or_default());
-                                                                        f_travail.set(m_edit.job.clone().unwrap_or_default());
-                                                                        f_genre.set(m_edit.gender.clone());
-                                                                        modal_ouvert.set(true);
-                                                                    }
-                                                                >
-                                                                    <IconPencil class="w-4 h-4" />
-                                                                </button>
-                                                                <button
-                                                                    title="Supprimer"
-                                                                    class="btn-ripple text-xs text-red-500 \
-                                                                           dark:text-red-400 rounded \
-                                                                           hover:scale-125 transition-transform \
-                                                                           duration-150 font-medium"
-                                                                    on:click=move |_| {
-                                                                        let ok = web_sys::window()
-                                                                            .and_then(|w| {
-                                                                                w.confirm_with_message(
-                                                                                    "Supprimer ce membre ? Cette action est irréversible.",
-                                                                                ).ok()
-                                                                            })
-                                                                            .unwrap_or(false);
-                                                                        if ok {
-                                                                            leptos::task::spawn_local(async move {
-                                                                                match db_service::delete_member(mid).await {
-                                                                                    Ok(_)  => refresh_ctr.update(|n| *n += 1),
-                                                                                    Err(e) => notif_error.set(Some(e)),
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    <IconTrash class="w-4 h-4" />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    }
-                                                }
-                                            />
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            // ── Pagination (masquée si une seule page) ───────────
-                            {move || (total_pages.get() > 1).then(|| view! {
-                                <div class="flex items-center justify-between flex-wrap gap-2 px-1">
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                                        {move || {
-                                            let total = sorted_filtered.get().len();
-                                            let p     = page.get();
-                                            let from  = (p * PAGE_SIZE + 1).min(total);
-                                            let to    = ((p + 1) * PAGE_SIZE).min(total);
-                                            format!("{from}–{to} sur {total}")
-                                        }}
-                                    </span>
-                                    <div class="flex items-center gap-1">
-                                        <button
-                                            disabled=move || page.get() == 0
-                                            on:click=move |_| page.update(|p| *p = p.saturating_sub(1))
-                                            class="btn-ripple px-3 py-1.5 text-xs rounded-lg \
-                                                   bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                                   border border-gray-200 dark:border-gray-600 \
-                                                   text-gray-700 dark:text-gray-300 \
-                                                   disabled:opacity-40 disabled:cursor-not-allowed \
-                                                   hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                        >
-                                            <span class="flex items-center gap-1">
-                                                <IconChevronLeft class="w-3.5 h-3.5" />
-                                                "Préc."
-                                            </span>
-                                        </button>
-                                        <span class="px-3 py-1.5 text-xs font-medium \
-                                                     text-gray-700 dark:text-gray-300">
-                                            {move || format!("{} / {}", page.get() + 1, total_pages.get())}
-                                        </span>
-                                        <button
-                                            disabled=move || page.get() + 1 >= total_pages.get()
-                                            on:click=move |_| page.update(|p| *p += 1)
-                                            class="btn-ripple px-3 py-1.5 text-xs rounded-lg \
-                                                   bg-white/70 dark:bg-gray-800/70 backdrop-blur \
-                                                   border border-gray-200 dark:border-gray-600 \
-                                                   text-gray-700 dark:text-gray-300 \
-                                                   disabled:opacity-40 disabled:cursor-not-allowed \
-                                                   hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                        >
-                                            <span class="flex items-center gap-1">
-                                                "Suiv."
-                                                <IconChevronRight class="w-3.5 h-3.5" />
-                                            </span>
-                                        </button>
-                                    </div>
-                                </div>
-                            })}
-                        </div>
-                    }.into_any()
-                }
-            }}
+            // ── Tableau ────────────────────────────────────────────────────────
+            <MemberTable
+                membres=membres
+                sorted_filtered=sorted_filtered
+                page=page
+                total_pages=total_pages
+                sort_col=sort_col
+                sort_dir=sort_dir
+                transfer_to=transfer_to
+                selected=selected
+                all_page_selected=all_page_selected
+                page_items=page_items
+                transferring_ids=transferring_ids
+                icon=icon
+                row_hover=row_hover
+                link_class=link_class
+                spin_class=spin_class
+                loading=loading
+                refresh_ctr=refresh_ctr
+                notif_error=notif_error
+                modal_ouvert=modal_ouvert
+                edit_id=edit_id
+                f_carte=f_carte
+                f_nom=f_nom
+                f_adresse=f_adresse
+                f_telephone=f_telephone
+                f_travail=f_travail
+                f_genre=f_genre
+                contrib_membre_id=contrib_membre_id
+                contrib_membre_nom=contrib_membre_nom
+                contrib_open=contrib_open
+            />
 
             // ── Modal formulaire ───────────────────────────────────────────────
-            {move || modal_ouvert.get().then(|| {
-                let is_edit    = edit_id.get().is_some();
-                let modal_title = if is_edit { "Modifier le membre" } else { "Nouveau membre" };
-
-                view! {
-                    <Portal>
-                    <div
-                        style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
-                               display:flex;align-items:center;justify-content:center;padding:1rem;"
-                        class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-                        on:click=move |ev| {
-                            if ev.target() == ev.current_target() {
-                                leptos::task::spawn_local(async move { modal_ouvert.set(false); });
-                            }
-                        }
-                    >
-                        <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
-                                    w-full max-w-lg max-h-[90vh] overflow-y-auto \
-                                    border border-gray-100 dark:border-gray-700">
-
-                            <div class="flex items-center justify-between px-6 pt-5 pb-4 \
-                                        border-b border-gray-100 dark:border-gray-700">
-                                <h2 class="text-base font-bold text-gray-800 dark:text-white">
-                                    {modal_title}
-                                </h2>
-                                <button
-                                    on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
-                                    class="text-gray-400 hover:text-gray-600 \
-                                           dark:hover:text-gray-200 transition-colors \
-                                           p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                                >
-                                    <IconX class="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            <form on:submit=soumettre class="px-6 py-5 space-y-4">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class=LABEL>"N° carte *"</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="ex : C-0042"
-                                            class=INPUT
-                                            prop:value=move || f_carte.get()
-                                            on:input=move |ev| f_carte.set(event_target_value(&ev))
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class=LABEL>"Genre *"</label>
-                                        <select
-                                            class=INPUT
-                                            prop:value=move || f_genre.get()
-                                            on:change=move |ev| f_genre.set(event_target_value(&ev))
-                                        >
-                                            <option value="M">"Masculin"</option>
-                                            <option value="F">"Féminin"</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class=LABEL>"Nom complet *"</label>
-                                    <input
-                                        type="text" required
-                                        placeholder="Prénom Nom"
-                                        class=INPUT
-                                        prop:value=move || f_nom.get()
-                                        on:input=move |ev| f_nom.set(event_target_value(&ev))
-                                    />
-                                </div>
-
-                                <div>
-                                    <label class=LABEL>"Adresse"</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Quartier, ville…"
-                                        class=INPUT
-                                        prop:value=move || f_adresse.get()
-                                        on:input=move |ev| f_adresse.set(event_target_value(&ev))
-                                    />
-                                </div>
-
-                                <div>
-                                    <label class=LABEL>"Téléphone"</label>
-                                    <PhoneInput value=f_telephone class=INPUT />
-                                </div>
-
-                                <div>
-                                    <label class=LABEL>"Travail / Emploi"</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Enseignant, Commerçant…"
-                                        class=INPUT
-                                        prop:value=move || f_travail.get()
-                                        on:input=move |ev| f_travail.set(event_target_value(&ev))
-                                    />
-                                </div>
-
-                                <div class="flex gap-3 justify-end pt-1">
-                                    <button
-                                        type="button"
-                                        on:click=move |_| { leptos::task::spawn_local(async move { modal_ouvert.set(false); }); }
-                                        class="btn-ripple px-4 py-2 text-sm font-medium \
-                                               text-gray-600 dark:text-gray-300 \
-                                               bg-gray-100 dark:bg-gray-700 \
-                                               hover:bg-gray-200 dark:hover:bg-gray-600 \
-                                               rounded-xl transition-colors"
-                                    >
-                                        "Annuler"
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled=move || f_loading.get()
-                                        class=format!("btn-ripple px-4 py-2 text-sm font-semibold \
-                                                       text-white {} rounded-xl \
-                                                       disabled:opacity-60 disabled:cursor-wait \
-                                                       transition-colors shadow-sm", btn_class)
-                                    >
-                                        {move || if f_loading.get() { "Enregistrement…" } else { "Enregistrer" }}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    </Portal>
-                }
+            {move || modal_ouvert.get().then(|| view! {
+                <MemberForm
+                    open=modal_ouvert
+                    edit_id=edit_id
+                    member_type=member_type
+                    btn_class=btn_class
+                    refresh_ctr=refresh_ctr
+                    notif_error=notif_error
+                    f_carte=f_carte
+                    f_nom=f_nom
+                    f_adresse=f_adresse
+                    f_telephone=f_telephone
+                    f_travail=f_travail
+                    f_genre=f_genre
+                    f_loading=f_loading
+                />
             })}
 
             // ── Modal de transfert ─────────────────────────────────────────────
             {move || {
-                if transfer_to.is_none() || !transfer_modal.get() { return None; }
-                let n           = selected.get().len();
-                let target_name = transfer_to.unwrap_or("Communiant");
-                Some(view! {
-                    <Portal>
-                    <div
-                        style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
-                               display:flex;align-items:center;justify-content:center;padding:1rem;"
-                        class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-                    >
-                        <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
-                                    w-full max-w-sm border border-gray-100 dark:border-gray-700 \
-                                    overflow-hidden">
-                            // En-tête coloré
-                            <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5">
-                                <div class="text-center">
-                                    <div class="flex justify-center mb-2">
-                                        <IconCross class="w-10 h-10 text-white" />
-                                    </div>
-                                    <h2 class="text-base font-bold text-white">
-                                        "Confirmer le transfert"
-                                    </h2>
-                                </div>
-                            </div>
-                            // Corps
-                            <div class="px-6 py-5 space-y-4">
-                                <p class="text-sm text-gray-700 dark:text-gray-300 text-center">
-                                    {format!(
-                                        "Transférer {n} membre{} vers les {}s ?",
-                                        if n > 1 { "s" } else { "" },
-                                        target_name
-                                    )}
-                                </p>
-                                <div class="flex items-start gap-2 p-3 \
-                                            bg-amber-50 dark:bg-amber-900/20 \
-                                            border border-amber-200 dark:border-amber-700/50 \
-                                            rounded-xl text-xs text-amber-700 dark:text-amber-300">
-                                    <IconInfo class="w-4 h-4 shrink-0 mt-0.5" />
-                                    <span>
-                                        "Les contributions restent liées à ces membres — \
-                                         leur historique est préservé."
-                                    </span>
-                                </div>
-                                <div class="flex gap-3">
-                                    <button
-                                        type="button"
-                                        disabled=move || transfer_loading.get()
-                                        on:click=move |_| {
-                                            transfer_modal.set(false);
-                                        }
-                                        class="btn-ripple flex-1 px-4 py-2.5 text-sm font-medium \
-                                               text-gray-600 dark:text-gray-300 \
-                                               bg-gray-100 dark:bg-gray-700 \
-                                               hover:bg-gray-200 dark:hover:bg-gray-600 \
-                                               disabled:opacity-50 rounded-xl transition-colors"
-                                    >
-                                        "Annuler"
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled=move || transfer_loading.get()
-                                        on:click=move |_| do_transfer()
-                                        class="btn-ripple flex-1 px-4 py-2.5 text-sm font-semibold \
-                                               text-white bg-amber-500 hover:bg-amber-600 \
-                                               disabled:opacity-60 disabled:cursor-wait \
-                                               rounded-xl transition-colors shadow-sm"
-                                    >
-                                        {move || if transfer_loading.get() {
-                                            view! { <span>"Transfert en cours…"</span> }.into_any()
-                                        } else {
-                                            view! {
-                                                <span class="flex items-center gap-1.5">
-                                                    <IconCross class="w-4 h-4" />
-                                                    "Confirmer"
-                                                </span>
-                                            }.into_any()
-                                        }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </Portal>
+                let tt = transfer_to?;
+                transfer_modal.get().then(|| view! {
+                    <TransferModal
+                        open=transfer_modal
+                        loading=transfer_loading
+                        selected=selected
+                        transfer_to=tt
+                        on_confirm=do_transfer
+                    />
                 })
             }}
 
@@ -940,46 +405,5 @@ pub fn MemberPage(
             <ConfettiLayer active=confetti_active />
 
         </div>
-    }
-}
-
-// ─── Constantes de style formulaire ──────────────────────────────────────────
-
-const LABEL: &str = "block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1";
-const INPUT: &str = "w-full px-3 py-2 text-sm \
-                     bg-gray-50 dark:bg-gray-700/60 \
-                     border border-gray-200 dark:border-gray-600 \
-                     rounded-xl text-gray-800 dark:text-white \
-                     placeholder-gray-400 dark:placeholder-gray-500 \
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition";
-
-// ─── Composant en-tête de colonne triable ─────────────────────────────────────
-
-#[component]
-fn Th(
-    label:       &'static str,
-    col:         SortCol,
-    sort_col:    RwSignal<SortCol>,
-    sort_dir:    RwSignal<SortDir>,
-    #[prop(optional)]
-    extra_class: &'static str,
-) -> impl IntoView {
-    view! {
-        <th
-            class=format!("px-3 py-3 text-left cursor-pointer select-none \
-                           hover:text-gray-800 dark:hover:text-white transition-colors \
-                           whitespace-nowrap {extra_class}")
-            on:click=move |_| {
-                if sort_col.get() == col {
-                    sort_dir.update(|d| *d = d.toggle());
-                } else {
-                    sort_col.set(col);
-                    sort_dir.set(SortDir::Asc);
-                }
-            }
-        >
-            {label}
-            {move || if sort_col.get() == col { sort_dir.get().arrow() } else { "" }}
-        </th>
     }
 }

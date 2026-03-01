@@ -1,9 +1,12 @@
 pub mod contribution_modal;
 pub mod icons;
+pub mod member_form;
 pub mod member_page;
+pub mod member_table;
 pub mod navbar;
 pub mod phone_input;
 pub mod sky_canvas;
 pub mod theme_switcher;
 pub mod titlebar;
+pub mod transfer_modal;
 pub mod year_toast;

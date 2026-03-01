@@ -6,130 +6,19 @@
 ///   - year_summaries : totaux annuels (recalculés à chaque insert/delete de contribution)
 use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePool},
     Row,
 };
 use std::str::FromStr;
 
-// ─── Erreur interne ───────────────────────────────────────────────────────────
-
-#[derive(Debug)]
-pub enum AppError {
-    Db(sqlx::Error),
-    Validation(String),
-}
-
-impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AppError::Db(e)         => write!(f, "{e}"),
-            AppError::Validation(s) => write!(f, "{s}"),
-        }
-    }
-}
-
-impl From<sqlx::Error> for AppError {
-    fn from(e: sqlx::Error) -> Self {
-        AppError::Db(e)
-    }
-}
-
-// ─── Modèle Member ────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Member {
-    pub id:          i64,
-    pub card_number: String,
-    pub full_name:   String,
-    pub address:     Option<String>,
-    pub phone:       Option<String>,
-    pub job:         Option<String>,
-    pub gender:      String,      // "M" | "F"
-    pub member_type: String,      // "Communiant" | "Cathekomen"
-    pub created_at:  String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MemberInput {
-    pub card_number: String,
-    pub full_name:   String,
-    pub address:     Option<String>,
-    pub phone:       Option<String>,
-    pub job:         Option<String>,
-    pub gender:      String,
-    pub member_type: String,
-}
-
-// ─── Modèle MemberWithTotal ───────────────────────────────────────────────────
-
-/// Membre avec le total de toutes ses contributions (calculé par JOIN SQL).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MemberWithTotal {
-    pub id:                  i64,
-    pub card_number:         String,
-    pub full_name:           String,
-    pub address:             Option<String>,
-    pub phone:               Option<String>,
-    pub job:                 Option<String>,
-    pub gender:              String,
-    pub member_type:         String,
-    pub created_at:          String,
-    /// Total en Ariary, arrondi à l'entier (ex: "15000")
-    pub total_contributions: String,
-}
-
-// ─── Modèle Contribution ──────────────────────────────────────────────────────
-
-/// `amount` est sérialisé en chaîne pour la compatibilité JSON ↔ rust_decimal.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Contribution {
-    pub id:            i64,
-    pub member_id:     i64,
-    pub payment_date:  String,
-    pub period:        String,
-    #[serde(with = "rust_decimal::serde::str")]
-    pub amount:        Decimal,
-    pub recorded_year: i32,
-}
-
-/// `amount` reçu sous forme de chaîne depuis le frontend ("15000.50").
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ContributionInput {
-    pub member_id:    i64,
-    pub payment_date: String,
-    pub period:       String,
-    pub amount:       String,
-}
-
-// ─── Modèle ContributionWithMember ────────────────────────────────────────────
-
-/// Cotisation avec le nom complet du membre (JOIN SQL).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContributionWithMember {
-    pub id:            i64,
-    pub member_id:     i64,
-    pub member_name:   String,
-    pub payment_date:  String,
-    pub period:        String,
-    #[serde(with = "rust_decimal::serde::str")]
-    pub amount:        Decimal,
-    pub recorded_year: i32,
-}
-
-// ─── Modèle YearSummary ───────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct YearSummary {
-    pub year:      i32,
-    #[serde(with = "rust_decimal::serde::str")]
-    pub total:     Decimal,
-    pub closed_at: Option<String>,
-    pub note:      Option<String>,
-}
-
-// ─── Repository ───────────────────────────────────────────────────────────────
+use super::{
+    error::AppError,
+    models::{
+        Contribution, ContributionInput, ContributionWithMember,
+        Member, MemberInput, MemberWithTotal, YearSummary,
+    },
+};
 
 pub struct Repository {
     pool: SqlitePool,
@@ -592,7 +481,6 @@ impl Repository {
             ))?;
 
         // Transaction : INSERT + refresh_year_total sont atomiques.
-        // Si refresh échoue, l'INSERT est annulé → pas d'incohérence.
         let mut tx = self.pool.begin().await?;
 
         let row = sqlx::query(
@@ -623,8 +511,6 @@ impl Repository {
     }
 
     pub async fn delete_contribution(&self, id: i64) -> Result<(), AppError> {
-        // Transaction : SELECT year + DELETE + refresh_year_total sont atomiques.
-        // Si refresh échoue après DELETE, tout est annulé → total toujours cohérent.
         let mut tx = self.pool.begin().await?;
 
         let row = sqlx::query("SELECT recorded_year FROM contributions WHERE id = ?")
@@ -671,7 +557,6 @@ impl Repository {
     }
 
     /// Clôture une année : enregistre closed_at + note.
-    /// Crée le résumé s'il n'existe pas encore.
     /// Tout est atomique : refresh_year_total + UPDATE closed_at + lecture finale.
     pub async fn close_year(
         &self,
@@ -692,7 +577,7 @@ impl Repository {
         .execute(&mut *tx)
         .await?;
 
-        // Lire l'état final dans la même transaction (données cohérentes garanties)
+        // Lire l'état final dans la même transaction
         let row = sqlx::query(
             "SELECT year, total, closed_at, note FROM year_summaries WHERE year = ?",
         )
@@ -831,9 +716,7 @@ mod tests {
     async fn test_delete_member_cascade() {
         let repo = make_repo().await;
         let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
-        // Ajouter une contribution
         repo.create_contribution(contribution_input(m.id, "2024-03-01", "2024", "5000")).await.unwrap();
-        // Supprimer le membre → la contribution doit disparaître en cascade
         repo.delete_member(m.id).await.unwrap();
         let list = repo.get_members().await.unwrap();
         assert!(list.is_empty());
@@ -879,7 +762,6 @@ mod tests {
         repo.create_contribution(contribution_input(m.id, "2024-01-15", "2024", "10000")).await.unwrap();
         repo.create_contribution(contribution_input(m.id, "2024-06-01", "2024", "5000.50")).await.unwrap();
         let list = repo.get_members_by_type_with_total("Communiant").await.unwrap();
-        // 10000 + 5000.50 = 15000 (arrondi f64 as i64 dans le formatter)
         let total: f64 = list[0].total_contributions.parse().unwrap();
         assert!((total - 15000.0).abs() < 2.0);
     }
@@ -928,11 +810,9 @@ mod tests {
         let c1 = repo.create_contribution(contribution_input(m.id, "2024-01-01", "2024", "10000")).await.unwrap();
         repo.create_contribution(contribution_input(m.id, "2024-06-01", "2024", "5000")).await.unwrap();
 
-        // Total = 15000
         let s = repo.get_year_summary(2024).await.unwrap().unwrap();
         assert_eq!(s.total, Decimal::from_str("15000").unwrap());
 
-        // Supprimer la première → total = 5000
         repo.delete_contribution(c1.id).await.unwrap();
         let s2 = repo.get_year_summary(2024).await.unwrap().unwrap();
         assert_eq!(s2.total, Decimal::from_str("5000").unwrap());
@@ -980,7 +860,6 @@ mod tests {
     #[tokio::test]
     async fn test_close_year_sans_contributions() {
         let repo = make_repo().await;
-        // Créer une année vide via refresh
         let m = repo.create_member(member_input("C001", "Alice", "Communiant")).await.unwrap();
         repo.create_contribution(contribution_input(m.id, "2021-01-01", "2021", "0")).await.unwrap();
         let closed = repo.close_year(2021, None).await.unwrap();

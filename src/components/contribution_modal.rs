@@ -1,14 +1,14 @@
 /// Modal d'ajout de cotisation + couche confetti.
-use js_sys::{Date, Function, Math, Promise};
+use js_sys::{Date, Math};
 use leptos::portal::Portal;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::JsFuture;
 
 use crate::{
     components::icons::{IconAlertTriangle, IconSave, IconX},
     models::contribution::ContributionInput,
     services::db_service,
+    utils::sleep_ms,
 };
 
 // ─── Palette confetti ─────────────────────────────────────────────────────────
@@ -57,18 +57,6 @@ impl Piece {
             sw  = self.duration / 2,
         )
     }
-}
-
-// ─── Helper async ─────────────────────────────────────────────────────────────
-
-async fn sleep_ms(ms: u32) {
-    let promise = Promise::new(&mut |resolve: Function, _: Function| {
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32)
-            .unwrap();
-    });
-    let _ = JsFuture::from(promise).await;
 }
 
 // ─── Formatage du montant ─────────────────────────────────────────────────────

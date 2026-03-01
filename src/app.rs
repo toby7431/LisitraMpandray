@@ -3,7 +3,6 @@ use leptos_router::{
     components::{Route, Router, Routes},
     path,
 };
-use web_sys::window;
 
 use crate::{
     components::{navbar::Navbar, sky_canvas::SkyCanvas, titlebar::TitleBar, year_toast::YearToast},
@@ -13,125 +12,9 @@ use crate::{
         communiants::Communiants,
     },
     services::db_service,
+    theme::{apply_theme_to_dom, load_theme, save_theme, ThemeCtx, ToastCtx},
+    utils::sleep_ms,
 };
-
-// ─── Thème ──────────────────────────────────────────────────────────────────
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Theme {
-    Light,
-    Dark,
-    System,
-}
-
-impl Theme {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Theme::Light  => "light",
-            Theme::Dark   => "dark",
-            Theme::System => "system",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "dark"   => Theme::Dark,
-            "system" => Theme::System,
-            _        => Theme::Light,
-        }
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Theme::Light  => "Lumineux",
-            Theme::Dark   => "Sombre",
-            Theme::System => "Système",
-        }
-    }
-
-
-}
-
-// ─── Contextes globaux ──────────────────────────────────────────────────────
-
-#[derive(Clone, Copy)]
-pub struct ThemeCtx {
-    pub theme: RwSignal<Theme>,
-}
-
-/// Contexte pour le toast de clôture annuelle.
-/// `data` contient le résumé de l'année venant d'être clôturée, ou `None`.
-#[derive(Clone, Copy)]
-pub struct ToastCtx {
-    pub data: RwSignal<Option<YearSummary>>,
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-fn load_theme() -> Theme {
-    window()
-        .and_then(|w| w.local_storage().ok().flatten())
-        .and_then(|s| s.get_item("eglise_theme").ok().flatten())
-        .map(|v| Theme::from_str(&v))
-        .unwrap_or(Theme::System)
-}
-
-fn save_theme(theme: Theme) {
-    if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten()) {
-        let _ = storage.set_item("eglise_theme", theme.as_str());
-    }
-}
-
-fn system_prefers_dark() -> bool {
-    window()
-        .and_then(|w| w.match_media("(prefers-color-scheme: dark)").ok().flatten())
-        .map(|mq| mq.matches())
-        .unwrap_or(false)
-}
-
-pub fn apply_theme_to_dom(theme: Theme, with_transition: bool) {
-    let dark = match theme {
-        Theme::Dark   => true,
-        Theme::Light  => false,
-        Theme::System => system_prefers_dark(),
-    };
-    if let Some(html) = window()
-        .and_then(|w| w.document())
-        .and_then(|d| d.document_element())
-    {
-        if with_transition {
-            let _ = html.class_list().add_1("theme-transitioning");
-            let html2 = html.clone();
-            leptos::task::spawn_local(async move {
-                sleep_ms(900).await;
-                let _ = html2.class_list().remove_1("theme-transitioning");
-            });
-        }
-        if dark {
-            let _ = html.class_list().add_1("dark");
-            let _ = html.class_list().remove_1("light");
-        } else {
-            let _ = html.class_list().remove_1("dark");
-            let _ = html.class_list().add_1("light");
-        }
-    }
-}
-
-/// Attendre `ms` millisecondes (non-bloquant, WASM-compatible).
-async fn sleep_ms(ms: u32) {
-    use js_sys::Promise;
-    use wasm_bindgen_futures::JsFuture;
-    let p = Promise::new(&mut |resolve, _| {
-        web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                &resolve,
-                ms as i32,
-            )
-            .unwrap();
-    });
-    let _ = JsFuture::from(p).await;
-}
 
 // ─── Composant racine ───────────────────────────────────────────────────────
 
