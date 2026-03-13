@@ -8,7 +8,7 @@ use leptos_router::{
 };
 
 use crate::components::icons::{
-    IconArchive, IconBookOpen, IconChurch, IconCross, IconHome,
+    IconArchive, IconBookOpen, IconCross, IconHome,
 };
 use crate::components::theme_switcher::ThemeSwitcher;
 
@@ -63,7 +63,7 @@ pub fn Navbar() -> impl IntoView {
 
                     // ── Logo / Titre ───────────────────────────────────────────
                     <div class="flex items-center gap-2 shrink-0">
-                        <IconChurch class="w-6 h-6 sm:w-7 sm:h-7 text-blue-600 dark:text-blue-400" />
+                        <img src="/assets/logo.jpg" class="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded" alt="Logo" />
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
                                 "Église Gestion"
