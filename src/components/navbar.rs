@@ -66,10 +66,7 @@ pub fn Navbar() -> impl IntoView {
                         <img src="/assets/logo.jpg" class="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded" alt="Logo" />
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
-                                "Église Gestion"
-                            </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
-                                "Madagascar"
+                                "FJKM Ambalavao Isotry"
                             </p>
                         </div>
                     </div>

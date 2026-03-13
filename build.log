@@ -1,0 +1,27 @@
+Setting up MSVC environment...
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+**********************************************************************
+** Visual Studio 2022 Developer Command Prompt v17.0
+** Copyright (c) 2025 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+Building release...
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `trunk build --release`
+2026-03-13T07:12:01.940927Z  INFO Starting trunk 0.21.14
+2026-03-13T07:12:01.941487Z  INFO starting build
+2026-03-13T07:12:02.062303Z ERROR error
+error preparing build environment
+
+Caused by:
+    0: error cleaning staging dist dir: \\?\D:\lisitra_mpandray\EgliseManager\dist\.stage
+    1: error removing directory
+    2: The directory is not empty. (os error 145)
+2026-03-13T07:12:02.063119Z ERROR error preparing build environment
+2026-03-13T07:12:02.063133Z  INFO   1: error cleaning staging dist dir: \\?\D:\lisitra_mpandray\EgliseManager\dist\.stage
+2026-03-13T07:12:02.063136Z  INFO   2: error removing directory
+2026-03-13T07:12:02.063139Z  INFO   3: The directory is not empty. (os error 145)
+       Error beforeBuildCommand `trunk build --release` failed with exit code 1
+Done. Check target\release\ for the .exe
+Press any key to continue . . . 

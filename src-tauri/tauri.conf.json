@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Église Gestion",
+  "productName": "FJKM Ambalavao Isotry",
   "version": "0.1.0",
   "identifier": "mg.eglise.gestion",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Église Gestion — Madagascar",
+        "title": "FJKM Ambalavao Isotry",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

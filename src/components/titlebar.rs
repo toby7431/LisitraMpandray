@@ -49,7 +49,7 @@ pub fn TitleBar() -> impl IntoView {
                 </svg>
                 <span class="text-[11px] font-semibold tracking-wide \
                               text-gray-600 dark:text-gray-400">
-                    "Église Gestion"
+                    "FJKM Ambalavao Isotry"
                 </span>
             </div>
 
