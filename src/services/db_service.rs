@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /// Appels aux commandes Tauri depuis le WASM frontend.
 ///
 /// Accède à `window.__TAURI__.core.invoke` via `js_sys::Reflect` (namespacing wasm-bindgen).

@@ -63,7 +63,7 @@ pub fn Navbar() -> impl IntoView {
 
                     // ── Logo / Titre ───────────────────────────────────────────
                     <div class="flex items-center gap-2 shrink-0">
-                        <img src="/assets/logo.jpg" class="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded" alt="Logo" />
+                        <img src="/assets/logo.jpg" class="w-6 h-6 sm:w-7 sm:h-7 object-cover rounded" alt="Logo" />
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
                                 "FJKM Ambalavao Isotry"
@@ -72,45 +72,48 @@ pub fn Navbar() -> impl IntoView {
                     </div>
 
                     // ── Onglets ────────────────────────────────────────────────
-                    <nav class="relative flex overflow-x-auto scrollbar-none flex-1 justify-center"
+                    <nav class="flex overflow-x-auto scrollbar-none flex-1 justify-center"
                          aria-label="Navigation principale">
-                        {TABS
-                            .iter()
-                            .enumerate()
-                            .map(|(i, tab)| {
-                                let path  = tab.path;
-                                let label = tab.label;
-                                view! {
-                                    <A
-                                        href=path
-                                        attr:class=move || {
-                                            let base = "nav-tab flex items-center gap-1.5 px-2 sm:px-4 \
-                                                        py-4 sm:py-5 text-xs sm:text-sm font-medium \
-                                                        whitespace-nowrap shrink-0";
-                                            if idx.get() == i {
-                                                format!("{base} text-blue-600 dark:text-blue-400")
-                                            } else {
-                                                format!("{base} text-gray-500 dark:text-gray-400 \
-                                                         hover:text-blue-500 dark:hover:text-blue-300")
+                        // ── Conteneur interne : indicator en % des onglets ────
+                        <div class="relative flex">
+                            {TABS
+                                .iter()
+                                .enumerate()
+                                .map(|(i, tab)| {
+                                    let path  = tab.path;
+                                    let label = tab.label;
+                                    view! {
+                                        <A
+                                            href=path
+                                            attr:class=move || {
+                                                let base = "nav-tab flex items-center gap-1.5 px-2 sm:px-4 \
+                                                            py-4 sm:py-5 text-xs sm:text-sm font-medium \
+                                                            whitespace-nowrap shrink-0";
+                                                if idx.get() == i {
+                                                    format!("{base} text-blue-600 dark:text-blue-400")
+                                                } else {
+                                                    format!("{base} text-gray-500 dark:text-gray-400 \
+                                                             hover:text-blue-500 dark:hover:text-blue-300")
+                                                }
                                             }
-                                        }
-                                    >
-                                        // Icône SVG — hérite la couleur du parent via currentColor
-                                        {tab_icon(i)}
-                                        // Label masqué sur mobile, visible à partir de sm
-                                        <span class="hidden sm:inline">{label}</span>
-                                    </A>
-                                }
-                            })
-                            .collect_view()}
+                                        >
+                                            // Icône SVG — hérite la couleur du parent via currentColor
+                                            {tab_icon(i)}
+                                            // Label masqué sur mobile, visible à partir de sm
+                                            <span class="hidden sm:inline">{label}</span>
+                                        </A>
+                                    }
+                                })
+                                .collect_view()}
 
-                        // ── Indicateur glissant ────────────────────────────────
-                        <div
-                            class="nav-indicator"
-                            style=move || {
-                                format!("transform: translateX({}%);", idx.get() * 100)
-                            }
-                        />
+                            // ── Indicateur glissant ────────────────────────────
+                            <div
+                                class="nav-indicator"
+                                style=move || {
+                                    format!("transform: translateX({}%);", idx.get() * 100)
+                                }
+                            />
+                        </div>
                     </nav>
 
                     // ── Sélecteur de thème ─────────────────────────────────────
