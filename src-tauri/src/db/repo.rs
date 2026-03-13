@@ -30,7 +30,7 @@ impl Repository {
         // `filename()` prend un chemin OS (backslashes Windows OK, espaces OK).
         // `from_str("sqlite://:memory:")` est conservé pour les tests en mémoire.
         let base = if db_path == ":memory:" {
-            SqliteConnectOptions::from_str("sqlite://:memory:").map_err(AppError::Db)?
+            SqliteConnectOptions::from_str("sqlite://:memory:")?
         } else {
             SqliteConnectOptions::new().filename(db_path)
         };
@@ -44,7 +44,7 @@ impl Repository {
         sqlx::migrate!("./migrations")
             .run(&pool)
             .await
-            .map_err(|e| AppError::Db(sqlx::Error::from(e)))?;
+            .map_err(|e| { eprintln!("[Migrate Error] {e}"); AppError::Db })?;
 
         Ok(Repository { pool })
     }
@@ -704,7 +704,7 @@ mod tests {
         let repo = make_repo().await;
         repo.create_member(member_input("C001", "Jean", "Communiant")).await.unwrap();
         let err = repo.create_member(member_input("C001", "Pierre", "Communiant")).await.unwrap_err();
-        assert!(matches!(err, AppError::Db(_)));
+        assert!(matches!(err, AppError::Db));
     }
 
     #[tokio::test]

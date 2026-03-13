@@ -1,6 +1,10 @@
 /// Barre de navigation avec 4 onglets et indicateur glissant animé.
 /// L'indicateur utilise `transform: translateX(n × 100%)` sur un élément
 /// de largeur 25% — la transition CSS utilise un cubic-bezier « ressort ».
+
+/// Logo embarqué en data URI — élimine tout problème de chemin ou CSP.
+const LOGO_SRC: &str = include_str!("../../assets/logo_data_uri.txt");
+
 use leptos::prelude::*;
 use leptos_router::{
     components::A,
@@ -63,7 +67,7 @@ pub fn Navbar() -> impl IntoView {
 
                     // ── Logo / Titre ───────────────────────────────────────────
                     <div class="flex items-center gap-2 shrink-0">
-                        <img src="/assets/logo.jpg" class="w-6 h-6 sm:w-7 sm:h-7 object-cover rounded" alt="Logo" />
+                        <img src=LOGO_SRC class="w-6 h-6 sm:w-7 sm:h-7 object-cover rounded" alt="Logo" />
                         <div class="leading-tight hidden xs:block sm:block">
                             <p class="font-bold text-gray-800 dark:text-white text-xs sm:text-sm md:text-base">
                                 "FJKM Ambalavao Isotry"
