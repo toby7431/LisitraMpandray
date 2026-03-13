@@ -1,8 +1,7 @@
 /// Modal de confirmation de transfert de membres (Cathécomènes → Communiants).
-use leptos::portal::Portal;
 use leptos::prelude::*;
 
-use crate::components::icons::{IconCross, IconInfo};
+use crate::components::{icons::{IconCross, IconInfo}, modal_wrapper::ModalWrapper};
 
 /// Modal de confirmation avant le transfert de membres sélectionnés.
 #[component]
@@ -19,15 +18,7 @@ pub fn TransferModal(
     on_confirm:       Callback<()>,
 ) -> impl IntoView {
     view! {
-        <Portal>
-        <div
-            style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
-                   display:flex;align-items:center;justify-content:center;padding:1rem;"
-            class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-        >
-            <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
-                        w-full max-w-sm border border-gray-100 dark:border-gray-700 \
-                        overflow-hidden">
+        <ModalWrapper card_class="max-w-sm overflow-hidden">
                 // En-tête coloré
                 <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5">
                     <div class="text-center">
@@ -96,8 +87,6 @@ pub fn TransferModal(
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
-        </Portal>
+        </ModalWrapper>
     }
 }

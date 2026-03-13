@@ -4,7 +4,7 @@
 /// Accède à `window.__TAURI__.core.invoke` via `js_sys::Reflect` (namespacing wasm-bindgen).
 /// Toutes les fonctions sont `async` et retournent `Result<T, String>`.
 use js_sys::{Function, Promise, Reflect};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
@@ -14,7 +14,7 @@ use crate::models::{
     year_summary::YearSummary,
 };
 
-// ─── Helper interne ───────────────────────────────────────────────────────────
+// ─── Helpers internes ─────────────────────────────────────────────────────────
 
 async fn invoke(cmd: &str, args: JsValue) -> Result<JsValue, String> {
     let window = web_sys::window().ok_or("Pas de window")?;
@@ -45,155 +45,130 @@ fn to_js<T: Serialize>(val: &T) -> JsValue {
     serde_wasm_bindgen::to_value(val).unwrap_or(JsValue::NULL)
 }
 
+/// Invoke une commande Tauri et désérialise la réponse en `T`.
+async fn invoke_cmd<T: for<'de> Deserialize<'de>>(cmd: &str, args: JsValue) -> Result<T, String> {
+    serde_wasm_bindgen::from_value(invoke(cmd, args).await?)
+        .map_err(|e| e.to_string())
+}
+
 // ─── Member ───────────────────────────────────────────────────────────────────
 
 pub async fn get_members() -> Result<Vec<Member>, String> {
-    let res = invoke("get_members", to_js(&serde_json::json!({}))).await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("get_members", to_js(&serde_json::json!({}))).await
 }
 
 pub async fn get_members_by_type(member_type: &str) -> Result<Vec<Member>, String> {
-    let res = invoke(
-        "get_members_by_type",
-        to_js(&serde_json::json!({ "memberType": member_type })),
-    )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("get_members_by_type", to_js(&serde_json::json!({ "memberType": member_type }))).await
 }
 
 pub async fn get_members_by_type_with_total(
     member_type: &str,
 ) -> Result<Vec<MemberWithTotal>, String> {
-    let res = invoke(
+    invoke_cmd(
         "get_members_by_type_with_total",
         to_js(&serde_json::json!({ "memberType": member_type })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn get_member(id: i64) -> Result<Member, String> {
-    let res = invoke("get_member", to_js(&serde_json::json!({ "id": id }))).await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("get_member", to_js(&serde_json::json!({ "id": id }))).await
 }
 
 pub async fn create_member(input: &MemberInput) -> Result<Member, String> {
-    let res = invoke("create_member", to_js(&serde_json::json!({ "member": input }))).await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("create_member", to_js(&serde_json::json!({ "member": input }))).await
 }
 
 pub async fn update_member(id: i64, input: &MemberInput) -> Result<Member, String> {
-    let res = invoke(
+    invoke_cmd(
         "update_member",
         to_js(&serde_json::json!({ "id": id, "member": input })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn delete_member(id: i64) -> Result<(), String> {
-    invoke("delete_member", to_js(&serde_json::json!({ "id": id }))).await?;
-    Ok(())
+    invoke("delete_member", to_js(&serde_json::json!({ "id": id }))).await.map(|_| ())
 }
 
 /// Transfère une liste de membres vers un nouveau type (ex: "Communiant").
 pub async fn transfer_members(ids: &[i64], new_type: &str) -> Result<usize, String> {
-    let res = invoke(
+    invoke_cmd(
         "transfer_members",
         to_js(&serde_json::json!({ "ids": ids, "newType": new_type })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 // ─── Contribution ─────────────────────────────────────────────────────────────
 
 pub async fn get_contributions(member_id: i64) -> Result<Vec<Contribution>, String> {
-    let res = invoke(
+    invoke_cmd(
         "get_contributions",
         to_js(&serde_json::json!({ "memberId": member_id })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn get_contributions_by_year(year: i32) -> Result<Vec<Contribution>, String> {
-    let res = invoke(
+    invoke_cmd(
         "get_contributions_by_year",
         to_js(&serde_json::json!({ "year": year })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn create_contribution(input: &ContributionInput) -> Result<Contribution, String> {
-    let res = invoke(
+    invoke_cmd(
         "create_contribution",
         to_js(&serde_json::json!({ "contribution": input })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn delete_contribution(id: i64) -> Result<(), String> {
-    invoke(
-        "delete_contribution",
-        to_js(&serde_json::json!({ "id": id })),
-    )
-    .await?;
-    Ok(())
+    invoke("delete_contribution", to_js(&serde_json::json!({ "id": id }))).await.map(|_| ())
 }
 
 pub async fn get_contributions_by_year_with_member(
     year: i32,
 ) -> Result<Vec<ContributionWithMember>, String> {
-    let res = invoke(
+    invoke_cmd(
         "get_contributions_by_year_with_member",
         to_js(&serde_json::json!({ "year": year })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 // ─── YearSummary ──────────────────────────────────────────────────────────────
 
 pub async fn get_year_summaries() -> Result<Vec<YearSummary>, String> {
-    let res = invoke("get_year_summaries", to_js(&serde_json::json!({}))).await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("get_year_summaries", to_js(&serde_json::json!({}))).await
 }
 
 pub async fn get_year_summary(year: i32) -> Result<Option<YearSummary>, String> {
-    let res = invoke(
+    invoke_cmd(
         "get_year_summary",
         to_js(&serde_json::json!({ "year": year })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn close_year(year: i32, note: Option<String>) -> Result<YearSummary, String> {
-    let res = invoke(
+    invoke_cmd(
         "close_year",
         to_js(&serde_json::json!({ "year": year, "note": note })),
     )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    .await
 }
 
 pub async fn reopen_year(year: i32) -> Result<YearSummary, String> {
-    let res = invoke("reopen_year", to_js(&serde_json::json!({ "year": year }))).await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("reopen_year", to_js(&serde_json::json!({ "year": year }))).await
 }
 
 pub async fn check_and_close_previous_year() -> Result<Option<YearSummary>, String> {
-    let res = invoke(
-        "check_and_close_previous_year",
-        to_js(&serde_json::json!({})),
-    )
-    .await?;
-    serde_wasm_bindgen::from_value(res).map_err(|e| e.to_string())
+    invoke_cmd("check_and_close_previous_year", to_js(&serde_json::json!({}))).await
 }
-
 
 // ─── Fenêtre ──────────────────────────────────────────────────────────────────
 

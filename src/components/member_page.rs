@@ -10,15 +10,13 @@ use crate::{
         contribution_modal::{ConfettiLayer, ContributionModal},
         icons::{IconAlertTriangle, IconPlus, IconSearch, IconTransfer, PageIcon},
         member_form::MemberForm,
-        member_table::{MemberTable, SortCol, SortDir},
+        member_table::{MemberTable, SortCol, SortDir, PAGE_SIZE},
         transfer_modal::TransferModal,
     },
     models::member::MemberWithTotal,
     services::db_service,
     utils::sleep_ms,
 };
-
-const PAGE_SIZE: usize = 15;
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 

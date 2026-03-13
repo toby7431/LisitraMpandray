@@ -3,6 +3,7 @@ pub mod icons;
 pub mod member_form;
 pub mod member_page;
 pub mod member_table;
+pub mod modal_wrapper;
 pub mod navbar;
 pub mod phone_input;
 pub mod sky_canvas;

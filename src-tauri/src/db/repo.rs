@@ -8,7 +8,7 @@ use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePool},
-    Row,
+    QueryBuilder, Row,
 };
 use std::str::FromStr;
 
@@ -169,6 +169,41 @@ impl Repository {
         Ok(())
     }
 
+    // ── Validation des entrées membre ─────────────────────────────────────────
+
+    fn validate_member_input(input: &MemberInput) -> Result<(), AppError> {
+        if input.card_number.trim().is_empty() {
+            return Err(AppError::Validation("Le numéro de carte est requis.".into()));
+        }
+        if input.card_number.len() > 50 {
+            return Err(AppError::Validation("Le numéro de carte ne doit pas dépasser 50 caractères.".into()));
+        }
+        if input.full_name.trim().is_empty() {
+            return Err(AppError::Validation("Le nom complet est requis.".into()));
+        }
+        if input.full_name.len() > 200 {
+            return Err(AppError::Validation("Le nom complet ne doit pas dépasser 200 caractères.".into()));
+        }
+        if input.address.as_deref().unwrap_or("").len() > 300 {
+            return Err(AppError::Validation("L'adresse ne doit pas dépasser 300 caractères.".into()));
+        }
+        if input.phone.as_deref().unwrap_or("").len() > 30 {
+            return Err(AppError::Validation("Le téléphone ne doit pas dépasser 30 caractères.".into()));
+        }
+        if input.job.as_deref().unwrap_or("").len() > 150 {
+            return Err(AppError::Validation("Le travail ne doit pas dépasser 150 caractères.".into()));
+        }
+        if input.gender != "M" && input.gender != "F" {
+            return Err(AppError::Validation("Genre invalide. Valeurs acceptées : 'M', 'F'.".into()));
+        }
+        if input.member_type != "Communiant" && input.member_type != "Cathekomen" {
+            return Err(AppError::Validation(
+                format!("Type de membre invalide : '{}'. Valeurs acceptées : 'Communiant', 'Cathekomen'.", input.member_type),
+            ));
+        }
+        Ok(())
+    }
+
     // ── Member CRUD ───────────────────────────────────────────────────────────
 
     pub async fn get_members(&self) -> Result<Vec<Member>, AppError> {
@@ -252,12 +287,7 @@ impl Repository {
     }
 
     pub async fn create_member(&self, input: MemberInput) -> Result<Member, AppError> {
-        if input.card_number.trim().is_empty() {
-            return Err(AppError::Validation("Le numéro de carte est requis.".into()));
-        }
-        if input.full_name.trim().is_empty() {
-            return Err(AppError::Validation("Le nom complet est requis.".into()));
-        }
+        Self::validate_member_input(&input)?;
 
         let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
 
@@ -292,12 +322,7 @@ impl Repository {
     }
 
     pub async fn update_member(&self, id: i64, input: MemberInput) -> Result<Member, AppError> {
-        if input.card_number.trim().is_empty() {
-            return Err(AppError::Validation("Le numéro de carte est requis.".into()));
-        }
-        if input.full_name.trim().is_empty() {
-            return Err(AppError::Validation("Le nom complet est requis.".into()));
-        }
+        Self::validate_member_input(&input)?;
 
         sqlx::query(
             "UPDATE members
@@ -343,16 +368,16 @@ impl Repository {
                 format!("Type de membre invalide : '{new_type}'. Valeurs acceptées : 'Communiant', 'Cathekomen'."),
             ));
         }
-        let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
-        let sql = format!(
-            "UPDATE members SET member_type = ? WHERE id IN ({})",
-            placeholders
-        );
-        let mut q = sqlx::query(&sql).bind(new_type);
+        let mut qb: QueryBuilder<sqlx::Sqlite> =
+            QueryBuilder::new("UPDATE members SET member_type = ");
+        qb.push_bind(new_type);
+        qb.push(" WHERE id IN (");
+        let mut sep = qb.separated(", ");
         for id in ids {
-            q = q.bind(*id);
+            sep.push_bind(*id);
         }
-        let result = q.execute(&self.pool).await?;
+        qb.push(")");
+        let result = qb.build().execute(&self.pool).await?;
         Ok(result.rows_affected() as usize)
     }
 
@@ -460,6 +485,15 @@ impl Repository {
         &self,
         input: ContributionInput,
     ) -> Result<Contribution, AppError> {
+        // Valider la période
+        let period = input.period.trim();
+        if period.is_empty() {
+            return Err(AppError::Validation("La période est requise (ex : '2025').".into()));
+        }
+        if period.len() > 50 {
+            return Err(AppError::Validation("La période ne doit pas dépasser 50 caractères.".into()));
+        }
+
         // Valider et parser le montant
         let amount = Decimal::from_str(input.amount.trim())
             .map_err(|_| AppError::Validation(

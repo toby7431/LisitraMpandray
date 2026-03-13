@@ -1,11 +1,12 @@
 /// Modal d'ajout de cotisation + couche confetti.
 use js_sys::{Date, Math};
-use leptos::portal::Portal;
 use leptos::prelude::*;
-use wasm_bindgen::prelude::*;
 
 use crate::{
-    components::icons::{IconAlertTriangle, IconSave, IconX},
+    components::{
+        icons::{IconAlertTriangle, IconSave, IconX},
+        modal_wrapper::ModalWrapper,
+    },
     models::contribution::ContributionInput,
     services::db_service,
     utils::sleep_ms,
@@ -241,25 +242,10 @@ pub fn ContributionModal(
 
     // ─── Vue ──────────────────────────────────────────────────────────────────
     view! {
-        <Portal>
-        // Overlay — rendu dans document.body (hors du conteneur scrollable)
-        <div
-            style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
-                   display:flex;align-items:center;justify-content:center;padding:1rem;"
-            class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-            on:click=move |ev: web_sys::MouseEvent| {
-                let same = ev.target().zip(ev.current_target())
-                    .map(|(t, c)| JsValue::from(t) == JsValue::from(c))
-                    .unwrap_or(false);
-                if same {
-                    leptos::task::spawn_local(async move { open.set(false); });
-                }
-            }
+        <ModalWrapper
+            on_close=Callback::new(move |()| open.set(false))
+            card_class="max-w-md overflow-hidden"
         >
-            // Panneau
-            <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
-                        w-full max-w-md border border-gray-100 dark:border-gray-700 \
-                        overflow-hidden">
 
                 // ── En-tête ──────────────────────────────────────────────────
                 <div class="flex items-center justify-between px-6 pt-5 pb-4 \
@@ -390,8 +376,6 @@ pub fn ContributionModal(
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
-        </Portal>
+        </ModalWrapper>
     }
 }

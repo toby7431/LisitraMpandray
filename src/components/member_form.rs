@@ -1,10 +1,10 @@
 /// Modal formulaire — créer ou modifier un membre.
-use leptos::portal::Portal;
 use leptos::prelude::*;
 
 use crate::{
     components::{
-        icons::{IconX},
+        icons::IconX,
+        modal_wrapper::ModalWrapper,
         phone_input::PhoneInput,
     },
     models::member::MemberInput,
@@ -88,20 +88,10 @@ pub fn MemberForm(
     let modal_title = move || if is_edit() { "Modifier le membre" } else { "Nouveau membre" };
 
     view! {
-        <Portal>
-        <div
-            style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;\
-                   display:flex;align-items:center;justify-content:center;padding:1rem;"
-            class="overlay-fade bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-            on:click=move |ev| {
-                if ev.target() == ev.current_target() {
-                    leptos::task::spawn_local(async move { open.set(false); });
-                }
-            }
+        <ModalWrapper
+            on_close=Callback::new(move |()| open.set(false))
+            card_class="max-w-lg max-h-[90vh] overflow-y-auto"
         >
-            <div class="modal-pop bg-white dark:bg-gray-800 rounded-2xl shadow-2xl \
-                        w-full max-w-lg max-h-[90vh] overflow-y-auto \
-                        border border-gray-100 dark:border-gray-700">
 
                 <div class="flex items-center justify-between px-6 pt-5 pb-4 \
                             border-b border-gray-100 dark:border-gray-700">
@@ -205,8 +195,6 @@ pub fn MemberForm(
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
-        </Portal>
+        </ModalWrapper>
     }
 }

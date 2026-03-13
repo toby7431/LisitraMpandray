@@ -12,7 +12,7 @@ use crate::{
     utils::format_ariary,
 };
 
-const PAGE_SIZE: usize = 15;
+pub const PAGE_SIZE: usize = 15;
 
 // ─── Tri ──────────────────────────────────────────────────────────────────────
 
