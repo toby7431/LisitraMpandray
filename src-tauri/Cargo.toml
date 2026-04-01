@@ -1,10 +1,10 @@
 [package]
-name    = "eglise-gestion-tauri"
+name    = "fjkm-ambalavao-isotry-tauri"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name       = "eglise_gestion_tauri_lib"
+name       = "fjkm_ambalavao_isotry_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -20,3 +20,6 @@ chrono      = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1", features = ["serde-with-str"] }
 uuid             = { version = "1", features = ["v4"] }
 rust_xlsxwriter  = "0.80"
+axum        = { version = "0.7", features = ["json"] }
+reqwest     = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tower-http  = { version = "0.5", features = ["cors"] }

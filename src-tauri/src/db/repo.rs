@@ -20,6 +20,7 @@ use super::{
     },
 };
 
+#[derive(Clone)]
 pub struct Repository {
     pool: SqlitePool,
 }

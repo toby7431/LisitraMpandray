@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    eglise_gestion_tauri_lib::run();
+    fjkm_ambalavao_isotry_tauri_lib::run();
 }

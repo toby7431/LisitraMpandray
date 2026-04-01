@@ -9,42 +9,26 @@ use crate::{
     models::year_summary::YearSummary,
     pages::{
         accueil::Accueil, archives::Archives, cathekomens::Cathekomens,
-        communiants::Communiants,
+        communiants::Communiants, setup::SetupPage,
     },
-    services::db_service,
+    services::{config_service, db_service},
     theme::{apply_theme_to_dom, load_theme, save_theme, ThemeCtx, ToastCtx},
     utils::sleep_ms,
 };
 
-// ─── Composant racine ───────────────────────────────────────────────────────
+// ─── Application principale (après configuration) ────────────────────────────
 
 #[component]
-pub fn App() -> impl IntoView {
-    let initial = load_theme();
-    apply_theme_to_dom(initial, false); // pas de transition au premier rendu
-
-    let theme = RwSignal::new(initial);
-    provide_context(ThemeCtx { theme });
-
-    // Réagit à chaque changement de thème → DOM + localStorage
-    // `old.is_some()` = false au premier run, true ensuite → transition seulement lors des bascules
-    Effect::new(move |old: Option<()>| {
-        let t = theme.get();
-        save_theme(t);
-        apply_theme_to_dom(t, old.is_some());
-    });
-
-    // ── Toast clôture annuelle ───────────────────────────────────────────────
+fn MainApp() -> impl IntoView {
     let toast_data: RwSignal<Option<YearSummary>> = RwSignal::new(None);
     provide_context(ToastCtx { data: toast_data });
 
-    // Vérification immédiate au lancement, puis toutes les 24h
     leptos::task::spawn_local(async move {
         if let Ok(Some(s)) = db_service::check_and_close_previous_year().await {
             toast_data.set(Some(s));
         }
         loop {
-            sleep_ms(86_400_000).await; // 24 heures
+            sleep_ms(86_400_000).await;
             if let Ok(Some(s)) = db_service::check_and_close_previous_year().await {
                 toast_data.set(Some(s));
             }
@@ -53,13 +37,6 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            // ── Couche 0 : ciel animé (fixed, derrière tout) ──────────────────
-            <SkyCanvas />
-
-            // ── Couche 1 : barre de titre personnalisée ───────────────────────
-            <TitleBar />
-
-            // ── Couche 2 : contenu scrollable (démarre sous la titlebar) ──────
             <div style="position:fixed;top:36px;left:0;right:0;bottom:0;z-index:10;overflow-y:auto;"
                  class="flex flex-col min-h-full">
                 <Navbar />
@@ -78,9 +55,63 @@ pub fn App() -> impl IntoView {
                     </Routes>
                 </main>
             </div>
-
-            // ── Toast cloche (au-dessus de tout, z-50) ────────────────────────
             <YearToast />
         </Router>
+    }
+}
+
+// ─── Composant racine ────────────────────────────────────────────────────────
+
+#[component]
+pub fn App() -> impl IntoView {
+    let initial = load_theme();
+    apply_theme_to_dom(initial, false);
+
+    let theme = RwSignal::new(initial);
+    provide_context(ThemeCtx { theme });
+
+    Effect::new(move |old: Option<()>| {
+        let t = theme.get();
+        save_theme(t);
+        apply_theme_to_dom(t, old.is_some());
+    });
+
+    // None = chargement, Some(false) = non configuré, Some(true) = configuré
+    let is_configured: RwSignal<Option<bool>> = RwSignal::new(None);
+
+    Effect::new(move |_| {
+        leptos::task::spawn_local(async move {
+            match config_service::get_config().await {
+                Ok(Some(_)) => is_configured.set(Some(true)),
+                _           => is_configured.set(Some(false)),
+            }
+        });
+    });
+
+    view! {
+        // Fond animé et barre de titre — toujours présents
+        <SkyCanvas />
+        <TitleBar />
+
+        {move || match is_configured.get() {
+            // Chargement
+            None => view! {
+                <div class="fixed inset-0 flex items-center justify-center z-20">
+                    <p class="text-blue-900 dark:text-blue-100 text-lg font-medium animate-pulse">
+                        "Chargement…"
+                    </p>
+                </div>
+            }.into_any(),
+
+            // Wizard de configuration (premier lancement)
+            Some(false) => view! {
+                <SetupPage is_configured />
+            }.into_any(),
+
+            // Application principale
+            Some(true) => view! {
+                <MainApp />
+            }.into_any(),
+        }}
     }
 }

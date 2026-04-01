@@ -61,14 +61,14 @@ pub struct ToastCtx {
 pub(crate) fn load_theme() -> Theme {
     window()
         .and_then(|w| w.local_storage().ok().flatten())
-        .and_then(|s| s.get_item("eglise_theme").ok().flatten())
+        .and_then(|s| s.get_item("fjkm_theme").ok().flatten())
         .map(|v| Theme::from_str(&v))
         .unwrap_or(Theme::System)
 }
 
 pub(crate) fn save_theme(theme: Theme) {
     if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten()) {
-        let _ = storage.set_item("eglise_theme", theme.as_str());
+        let _ = storage.set_item("fjkm_theme", theme.as_str());
     }
 }
 

@@ -1,344 +1,468 @@
+mod api_server;
+mod config;
 mod db;
+mod export;
+mod remote_client;
+
+use config::{load_config, save_config_to_disk, AppConfig, AppMode};
 use db::{
     Contribution, ContributionInput, ContributionWithMember, Member, MemberInput, MemberWithTotal,
     Repository, YearSummary,
 };
-use rust_xlsxwriter::{Color, Format, Workbook};
+use export::{build_csv_from_members, build_excel_bytes, parse_csv_to_members};
+use remote_client::RemoteClient;
+use std::{path::PathBuf, sync::Arc};
 use tauri::Manager;
+use tokio::sync::RwLock;
 
-// ─── Commandes Member ─────────────────────────────────────────────────────────
+// ─── DataSource ────────────────────────────────────────────────────────────────
+
+/// Abstraction sur la source de données :
+/// - Local  : SQLite sur ce PC (mode serveur)
+/// - Remote : API HTTP sur le PC serveur (mode client)
+/// - Unconfigured : premier lancement, aucune config
+pub enum DataSource {
+    Local(Repository),
+    Remote(RemoteClient),
+    Unconfigured,
+}
+
+impl DataSource {
+    fn not_configured() -> String {
+        "non_configure".to_string()
+    }
+
+    // ── Members ───────────────────────────────────────────────────────────────
+
+    async fn get_members(&self) -> Result<Vec<Member>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_members().await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_members().await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_members_by_type(&self, t: &str) -> Result<Vec<Member>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_members_by_type(t).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_members_by_type(t).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_members_by_type_with_total(&self, t: &str) -> Result<Vec<MemberWithTotal>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_members_by_type_with_total(t).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_members_by_type_with_total(t).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_member(&self, id: i64) -> Result<Member, String> {
+        match self {
+            DataSource::Local(r)   => r.get_member(id).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_member(id).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn create_member(&self, input: MemberInput) -> Result<Member, String> {
+        match self {
+            DataSource::Local(r)   => r.create_member(input).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.create_member(input).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn update_member(&self, id: i64, input: MemberInput) -> Result<Member, String> {
+        match self {
+            DataSource::Local(r)   => r.update_member(id, input).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.update_member(id, input).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn delete_member(&self, id: i64) -> Result<(), String> {
+        match self {
+            DataSource::Local(r)   => r.delete_member(id).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.delete_member(id).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn transfer_members(&self, ids: &[i64], new_type: &str) -> Result<usize, String> {
+        match self {
+            DataSource::Local(r)   => r.transfer_members(ids, new_type).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.transfer_members(ids, new_type).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    // ── Contributions ─────────────────────────────────────────────────────────
+
+    async fn get_contributions(&self, member_id: i64) -> Result<Vec<Contribution>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_contributions(member_id).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_contributions(member_id).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_contributions_by_year(&self, year: i32) -> Result<Vec<Contribution>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_contributions_by_year(year).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_contributions_by_year(year).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn create_contribution(&self, input: ContributionInput) -> Result<Contribution, String> {
+        match self {
+            DataSource::Local(r)   => r.create_contribution(input).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.create_contribution(input).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn delete_contribution(&self, id: i64) -> Result<(), String> {
+        match self {
+            DataSource::Local(r)   => r.delete_contribution(id).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.delete_contribution(id).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_contributions_by_year_with_member(
+        &self,
+        year: i32,
+    ) -> Result<Vec<ContributionWithMember>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_contributions_by_year_with_member(year).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_contributions_by_year_with_member(year).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    // ── Year Summaries ────────────────────────────────────────────────────────
+
+    async fn get_year_summaries(&self) -> Result<Vec<YearSummary>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_year_summaries().await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_year_summaries().await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn get_year_summary(&self, year: i32) -> Result<Option<YearSummary>, String> {
+        match self {
+            DataSource::Local(r)   => r.get_year_summary(year).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.get_year_summary(year).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn close_year(&self, year: i32, note: Option<String>) -> Result<YearSummary, String> {
+        match self {
+            DataSource::Local(r)   => r.close_year(year, note).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.close_year(year, note).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn reopen_year(&self, year: i32) -> Result<YearSummary, String> {
+        match self {
+            DataSource::Local(r)   => r.reopen_year(year).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.reopen_year(year).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn check_and_close_previous_year(&self) -> Result<Option<YearSummary>, String> {
+        match self {
+            DataSource::Local(r)   => r.check_and_close_previous_year().await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)  => c.check_and_close_previous_year().await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    // ── Export / Import ───────────────────────────────────────────────────────
+
+    async fn export_members_csv(&self, member_type: &str) -> Result<String, String> {
+        match self {
+            DataSource::Local(r) => {
+                let members = r.get_members_by_type(member_type).await.map_err(|e| e.to_string())?;
+                Ok(build_csv_from_members(&members))
+            }
+            DataSource::Remote(c) => c.export_members_csv(member_type).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn export_members_excel(&self, member_type: &str) -> Result<Vec<u8>, String> {
+        match self {
+            DataSource::Local(r) => {
+                let members = r.get_members_by_type_with_total(member_type).await.map_err(|e| e.to_string())?;
+                build_excel_bytes(&members, member_type)
+            }
+            DataSource::Remote(c) => c.export_members_excel(member_type).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+
+    async fn import_members_csv(&self, csv_content: String, member_type: &str) -> Result<usize, String> {
+        match self {
+            DataSource::Local(r) => {
+                let inputs = parse_csv_to_members(&csv_content, member_type);
+                r.import_members(inputs).await.map_err(|e| e.to_string())
+            }
+            DataSource::Remote(c) => c.import_members_csv(csv_content, member_type).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    }
+}
+
+// ─── AppState ──────────────────────────────────────────────────────────────────
+
+pub struct AppState {
+    pub app_data_dir: PathBuf,
+    pub source: Arc<RwLock<DataSource>>,
+}
+
+// ─── Initialisation de la source ──────────────────────────────────────────────
+
+async fn init_source(app_data_dir: &PathBuf, cfg: &AppConfig) -> Result<DataSource, String> {
+    match &cfg.mode {
+        AppMode::Server => {
+            let db_path = app_data_dir
+                .join("fjkm.db")
+                .to_str()
+                .ok_or("Chemin DB invalide")?
+                .to_owned();
+            let repo = Repository::new(&db_path).await.map_err(|e| e.to_string())?;
+            let port = cfg.server_port;
+            let repo_clone = repo.clone();
+            // Démarrer le serveur Axum dans un thread séparé avec son propre runtime
+            std::thread::spawn(move || {
+                tokio::runtime::Runtime::new()
+                    .expect("Runtime Axum")
+                    .block_on(api_server::start_server(repo_clone, port));
+            });
+            Ok(DataSource::Local(repo))
+        }
+        AppMode::Client => Ok(DataSource::Remote(RemoteClient::new(cfg.server_url()))),
+    }
+}
+
+// ─── Commandes config ──────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn get_members(
-    state: tauri::State<'_, Repository>,
-) -> Result<Vec<Member>, String> {
-    state.get_members().await.map_err(|e| e.to_string())
+async fn get_config(state: tauri::State<'_, AppState>) -> Result<Option<AppConfig>, String> {
+    Ok(load_config(&state.app_data_dir))
+}
+
+#[tauri::command]
+async fn save_config(
+    state: tauri::State<'_, AppState>,
+    config: AppConfig,
+) -> Result<(), String> {
+    save_config_to_disk(&state.app_data_dir, &config)?;
+    let new_source = init_source(&state.app_data_dir, &config).await?;
+    *state.source.write().await = new_source;
+    Ok(())
+}
+
+#[tauri::command]
+async fn test_server_connection(ip: String, port: u16) -> Result<bool, String> {
+    let url = format!("http://{ip}:{port}/api/health");
+    let client = reqwest::Client::new();
+    match client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
+        Ok(resp) => Ok(resp.status().is_success()),
+        Err(_)   => Ok(false),
+    }
+}
+
+// ─── Commandes Member ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+async fn get_members(state: tauri::State<'_, AppState>) -> Result<Vec<Member>, String> {
+    state.source.read().await.get_members().await
 }
 
 #[tauri::command]
 async fn get_members_by_type(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member_type: String,
 ) -> Result<Vec<Member>, String> {
-    state.get_members_by_type(&member_type).await.map_err(|e| e.to_string())
+    state.source.read().await.get_members_by_type(&member_type).await
 }
 
 #[tauri::command]
 async fn get_members_by_type_with_total(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member_type: String,
 ) -> Result<Vec<MemberWithTotal>, String> {
-    state
-        .get_members_by_type_with_total(&member_type)
-        .await
-        .map_err(|e| e.to_string())
+    state.source.read().await.get_members_by_type_with_total(&member_type).await
 }
 
 #[tauri::command]
-async fn get_member(
-    state: tauri::State<'_, Repository>,
-    id: i64,
-) -> Result<Member, String> {
-    state.get_member(id).await.map_err(|e| e.to_string())
+async fn get_member(state: tauri::State<'_, AppState>, id: i64) -> Result<Member, String> {
+    state.source.read().await.get_member(id).await
 }
 
 #[tauri::command]
 async fn create_member(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member: MemberInput,
 ) -> Result<Member, String> {
-    state.create_member(member).await.map_err(|e| e.to_string())
+    state.source.read().await.create_member(member).await
 }
 
 #[tauri::command]
 async fn update_member(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     id: i64,
     member: MemberInput,
 ) -> Result<Member, String> {
-    state.update_member(id, member).await.map_err(|e| e.to_string())
+    state.source.read().await.update_member(id, member).await
 }
 
 #[tauri::command]
-async fn delete_member(
-    state: tauri::State<'_, Repository>,
-    id: i64,
-) -> Result<(), String> {
-    state.delete_member(id).await.map_err(|e| e.to_string())
+async fn delete_member(state: tauri::State<'_, AppState>, id: i64) -> Result<(), String> {
+    state.source.read().await.delete_member(id).await
 }
 
-// ─── Commandes Contribution ───────────────────────────────────────────────────
+// ─── Commandes Contribution ────────────────────────────────────────────────────
 
 #[tauri::command]
 async fn get_contributions(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member_id: i64,
 ) -> Result<Vec<Contribution>, String> {
-    state.get_contributions(member_id).await.map_err(|e| e.to_string())
+    state.source.read().await.get_contributions(member_id).await
 }
 
 #[tauri::command]
 async fn get_contributions_by_year(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     year: i32,
 ) -> Result<Vec<Contribution>, String> {
-    state.get_contributions_by_year(year).await.map_err(|e| e.to_string())
+    state.source.read().await.get_contributions_by_year(year).await
 }
 
 #[tauri::command]
 async fn create_contribution(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     contribution: ContributionInput,
 ) -> Result<Contribution, String> {
-    state.create_contribution(contribution).await.map_err(|e| e.to_string())
+    state.source.read().await.create_contribution(contribution).await
 }
 
 #[tauri::command]
-async fn delete_contribution(
-    state: tauri::State<'_, Repository>,
-    id: i64,
-) -> Result<(), String> {
-    state.delete_contribution(id).await.map_err(|e| e.to_string())
+async fn delete_contribution(state: tauri::State<'_, AppState>, id: i64) -> Result<(), String> {
+    state.source.read().await.delete_contribution(id).await
 }
 
 // ─── Commandes YearSummary ────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn get_year_summaries(
-    state: tauri::State<'_, Repository>,
-) -> Result<Vec<YearSummary>, String> {
-    state.get_year_summaries().await.map_err(|e| e.to_string())
+async fn get_year_summaries(state: tauri::State<'_, AppState>) -> Result<Vec<YearSummary>, String> {
+    state.source.read().await.get_year_summaries().await
 }
 
 #[tauri::command]
 async fn get_year_summary(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     year: i32,
 ) -> Result<Option<YearSummary>, String> {
-    state.get_year_summary(year).await.map_err(|e| e.to_string())
+    state.source.read().await.get_year_summary(year).await
 }
 
 #[tauri::command]
 async fn close_year(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     year: i32,
     note: Option<String>,
 ) -> Result<YearSummary, String> {
-    state.close_year(year, note).await.map_err(|e| e.to_string())
+    state.source.read().await.close_year(year, note).await
 }
 
 #[tauri::command]
 async fn reopen_year(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     year: i32,
 ) -> Result<YearSummary, String> {
-    state.reopen_year(year).await.map_err(|e| e.to_string())
+    state.source.read().await.reopen_year(year).await
 }
 
 #[tauri::command]
 async fn transfer_members(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     ids: Vec<i64>,
     new_type: String,
 ) -> Result<usize, String> {
-    state.transfer_members(&ids, &new_type).await.map_err(|e| e.to_string())
+    state.source.read().await.transfer_members(&ids, &new_type).await
 }
 
-// ─── Commandes Archives ───────────────────────────────────────────────────────
+// ─── Commandes Archives ────────────────────────────────────────────────────────
 
 #[tauri::command]
 async fn get_contributions_by_year_with_member(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     year: i32,
 ) -> Result<Vec<ContributionWithMember>, String> {
     state
+        .source
+        .read()
+        .await
         .get_contributions_by_year_with_member(year)
         .await
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn check_and_close_previous_year(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<Option<YearSummary>, String> {
-    state
-        .check_and_close_previous_year()
-        .await
-        .map_err(|e| e.to_string())
+    state.source.read().await.check_and_close_previous_year().await
 }
 
-// ─── Commandes Import / Export CSV ───────────────────────────────────────────
-
-/// Échappe un champ CSV : ajoute des guillemets si le champ contient une virgule,
-/// un guillemet ou un saut de ligne. Les guillemets internes sont doublés.
-fn csv_escape(s: &str) -> String {
-    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
-        format!("\"{}\"", s.replace('"', "\"\""))
-    } else {
-        s.to_string()
-    }
-}
-
-/// Parse une ligne CSV en tenant compte des champs entre guillemets.
-fn parse_csv_line(line: &str) -> Vec<String> {
-    let mut fields = Vec::new();
-    let mut field = String::new();
-    let mut in_quotes = false;
-    let mut chars = line.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if in_quotes {
-            if ch == '"' {
-                if chars.peek() == Some(&'"') {
-                    chars.next();
-                    field.push('"');
-                } else {
-                    in_quotes = false;
-                }
-            } else {
-                field.push(ch);
-            }
-        } else if ch == '"' {
-            in_quotes = true;
-        } else if ch == ',' {
-            fields.push(field.trim().to_string());
-            field = String::new();
-        } else {
-            field.push(ch);
-        }
-    }
-    fields.push(field.trim().to_string());
-    fields
-}
+// ─── Commandes Import / Export ─────────────────────────────────────────────────
 
 #[tauri::command]
 async fn export_members_csv(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member_type: String,
 ) -> Result<String, String> {
-    let members = state
-        .get_members_by_type(&member_type)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut out = String::new();
-    out.push_str("numero_carte,nom_complet,adresse,telephone,travail,genre\n");
-    for m in &members {
-        out.push_str(&csv_escape(&m.card_number));
-        out.push(',');
-        out.push_str(&csv_escape(&m.full_name));
-        out.push(',');
-        out.push_str(&csv_escape(m.address.as_deref().unwrap_or("")));
-        out.push(',');
-        out.push_str(&csv_escape(m.phone.as_deref().unwrap_or("")));
-        out.push(',');
-        out.push_str(&csv_escape(m.job.as_deref().unwrap_or("")));
-        out.push(',');
-        out.push_str(&csv_escape(&m.gender));
-        out.push('\n');
-    }
-    Ok(out)
+    state.source.read().await.export_members_csv(&member_type).await
 }
 
 #[tauri::command]
 async fn export_members_excel(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     member_type: String,
 ) -> Result<Vec<u8>, String> {
-    let members = state
-        .get_members_by_type_with_total(&member_type)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut workbook = Workbook::new();
-    let worksheet = workbook.add_worksheet();
-    worksheet.set_name(&member_type).map_err(|e| e.to_string())?;
-    worksheet.set_freeze_panes(1, 0).map_err(|e| e.to_string())?;
-
-    let header_fmt = Format::new()
-        .set_bold()
-        .set_background_color(Color::RGB(0x4472C4))
-        .set_font_color(Color::White);
-
-    let headers = [
-        "N° Carte", "Nom Complet", "Adresse",
-        "Téléphone", "Travail", "Genre", "Total Cotisations",
-    ];
-    for (col, &h) in headers.iter().enumerate() {
-        worksheet
-            .write_with_format(0, col as u16, h, &header_fmt)
-            .map_err(|e| e.to_string())?;
-    }
-
-    for (row, m) in members.iter().enumerate() {
-        let r = (row + 1) as u32;
-        worksheet.write(r, 0, m.card_number.as_str()).map_err(|e| e.to_string())?;
-        worksheet.write(r, 1, m.full_name.as_str()).map_err(|e| e.to_string())?;
-        worksheet.write(r, 2, m.address.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
-        worksheet.write(r, 3, m.phone.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
-        worksheet.write(r, 4, m.job.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
-        worksheet.write(r, 5, m.gender.as_str()).map_err(|e| e.to_string())?;
-        worksheet.write(r, 6, m.total_contributions.as_str()).map_err(|e| e.to_string())?;
-    }
-
-    worksheet.autofit();
-
-    workbook.save_to_buffer().map_err(|e| e.to_string())
+    state.source.read().await.export_members_excel(&member_type).await
 }
 
 #[tauri::command]
 async fn import_members_csv(
-    state: tauri::State<'_, Repository>,
+    state: tauri::State<'_, AppState>,
     csv_content: String,
     member_type: String,
 ) -> Result<usize, String> {
-    let mut inputs = Vec::new();
-    let mut lines = csv_content.lines();
-
-    // Sauter l'en-tête
-    if let Some(header) = lines.next() {
-        let h = header.trim().to_lowercase();
-        // Vérification souple : la première ligne doit ressembler à un en-tête
-        if !h.contains("carte") && !h.contains("nom") {
-            // Pas d'en-tête reconnu — on réintègre la ligne comme donnée
-            let fields = parse_csv_line(header);
-            if fields.len() >= 6 {
-                inputs.push(MemberInput {
-                    card_number: fields[0].clone(),
-                    full_name:   fields[1].clone(),
-                    address:     if fields[2].is_empty() { None } else { Some(fields[2].clone()) },
-                    phone:       if fields[3].is_empty() { None } else { Some(fields[3].clone()) },
-                    job:         if fields[4].is_empty() { None } else { Some(fields[4].clone()) },
-                    gender:      fields[5].clone(),
-                    member_type: member_type.clone(),
-                });
-            }
-        }
-    }
-
-    for line in lines {
-        let line = line.trim();
-        if line.is_empty() { continue; }
-        let fields = parse_csv_line(line);
-        if fields.len() < 6 { continue; }
-        inputs.push(MemberInput {
-            card_number: fields[0].clone(),
-            full_name:   fields[1].clone(),
-            address:     if fields[2].is_empty() { None } else { Some(fields[2].clone()) },
-            phone:       if fields[3].is_empty() { None } else { Some(fields[3].clone()) },
-            job:         if fields[4].is_empty() { None } else { Some(fields[4].clone()) },
-            gender:      fields[5].clone(),
-            member_type: member_type.clone(),
-        });
-    }
-
     state
-        .import_members(inputs)
+        .source
+        .read()
         .await
-        .map_err(|e| e.to_string())
+        .import_members_csv(csv_content, &member_type)
+        .await
 }
 
-// ─── Commandes fenêtre ────────────────────────────────────────────────────────
+// ─── Commandes fenêtre ─────────────────────────────────────────────────────────
 
 #[tauri::command]
 async fn minimize_window(app: tauri::AppHandle) -> Result<(), String> {
@@ -368,7 +492,7 @@ async fn close_window(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-// ─── Point d'entrée ───────────────────────────────────────────────────────────
+// ─── Point d'entrée ────────────────────────────────────────────────────────────
 
 pub fn run() {
     tauri::Builder::default()
@@ -377,25 +501,32 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("Impossible d'obtenir app_data_dir");
-            std::fs::create_dir_all(&app_dir)
-                .expect("Impossible de créer app_data_dir");
+            std::fs::create_dir_all(&app_dir).expect("Impossible de créer app_data_dir");
 
-            let db_path = app_dir
-                .join("eglise.db")
-                .to_str()
-                .expect("Chemin DB invalide (non-UTF8)")
-                .to_owned();
+            let config = load_config(&app_dir);
 
-            let rt = tokio::runtime::Runtime::new()
-                .expect("Impossible de créer le runtime Tokio");
-            let repo = rt
-                .block_on(Repository::new(&db_path))
-                .expect("Impossible d'initialiser la base SQLite");
+            let source = match config {
+                None => DataSource::Unconfigured,
+                Some(cfg) => {
+                    let rt = tokio::runtime::Runtime::new()
+                        .expect("Impossible de créer le runtime Tokio");
+                    rt.block_on(init_source(&app_dir, &cfg))
+                        .expect("Impossible d'initialiser la source de données")
+                }
+            };
 
-            app.manage(repo);
+            app.manage(AppState {
+                app_data_dir: app_dir,
+                source: Arc::new(RwLock::new(source)),
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Config
+            get_config,
+            save_config,
+            test_server_connection,
             // Member
             get_members,
             get_members_by_type,

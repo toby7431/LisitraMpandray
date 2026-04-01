@@ -2,10 +2,11 @@
 ///
 /// Réexporte tous les types publics pour que `lib.rs` puisse faire :
 /// `use db::{Repository, Member, ...}`
-mod error;
+pub mod error;
 mod models;
 mod repo;
 
+pub use error::AppError;
 pub use models::{
     Contribution, ContributionInput, ContributionWithMember,
     Member, MemberInput, MemberWithTotal, YearSummary,
