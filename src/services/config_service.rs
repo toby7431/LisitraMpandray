@@ -66,6 +66,11 @@ pub async fn save_config(config: &AppConfig) -> Result<(), String> {
     invoke_raw("save_config", to_js(&serde_json::json!({ "config": config }))).await.map(|_| ())
 }
 
+/// Supprime la configuration et remet l'app en état non-configuré.
+pub async fn reset_config() -> Result<(), String> {
+    invoke_raw("reset_config", to_js(&serde_json::json!({}))).await.map(|_| ())
+}
+
 /// Teste si le serveur à l'adresse ip:port est accessible.
 pub async fn test_server_connection(ip: &str, port: u16) -> Result<bool, String> {
     invoke_cmd(

@@ -272,6 +272,16 @@ async fn save_config(
 }
 
 #[tauri::command]
+async fn reset_config(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let config_file = config::config_path(&state.app_data_dir);
+    if config_file.exists() {
+        std::fs::remove_file(&config_file).map_err(|e| e.to_string())?;
+    }
+    *state.source.write().await = DataSource::Unconfigured;
+    Ok(())
+}
+
+#[tauri::command]
 async fn test_server_connection(ip: String, port: u16) -> Result<bool, String> {
     let url = format!("http://{ip}:{port}/api/health");
     let client = reqwest::Client::new();
@@ -526,6 +536,7 @@ pub fn run() {
             // Config
             get_config,
             save_config,
+            reset_config,
             test_server_connection,
             // Member
             get_members,

@@ -16,6 +16,15 @@ use crate::{
     utils::sleep_ms,
 };
 
+// ─── Contexte de configuration ───────────────────────────────────────────────
+
+/// Partagé via provide_context pour que la Navbar puisse déclencher
+/// une reconfiguration sans dépendance directe vers App.
+#[derive(Clone, Copy)]
+pub struct ConfigCtx {
+    pub is_configured: RwSignal<Option<bool>>,
+}
+
 // ─── Application principale (après configuration) ────────────────────────────
 
 #[component]
@@ -79,6 +88,9 @@ pub fn App() -> impl IntoView {
     // None = chargement, Some(false) = non configuré, Some(true) = configuré
     let is_configured: RwSignal<Option<bool>> = RwSignal::new(None);
 
+    // Fournir le signal au reste de l'arbre (Navbar en a besoin)
+    provide_context(ConfigCtx { is_configured });
+
     Effect::new(move |_| {
         leptos::task::spawn_local(async move {
             match config_service::get_config().await {
@@ -89,12 +101,10 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        // Fond animé et barre de titre — toujours présents
         <SkyCanvas />
         <TitleBar />
 
         {move || match is_configured.get() {
-            // Chargement
             None => view! {
                 <div class="fixed inset-0 flex items-center justify-center z-20">
                     <p class="text-blue-900 dark:text-blue-100 text-lg font-medium animate-pulse">
@@ -103,12 +113,10 @@ pub fn App() -> impl IntoView {
                 </div>
             }.into_any(),
 
-            // Wizard de configuration (premier lancement)
             Some(false) => view! {
                 <SetupPage is_configured />
             }.into_any(),
 
-            // Application principale
             Some(true) => view! {
                 <MainApp />
             }.into_any(),
