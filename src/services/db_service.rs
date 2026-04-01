@@ -170,6 +170,32 @@ pub async fn check_and_close_previous_year() -> Result<Option<YearSummary>, Stri
     invoke_cmd("check_and_close_previous_year", to_js(&serde_json::json!({}))).await
 }
 
+// ─── Import / Export CSV ──────────────────────────────────────────────────────
+
+pub async fn export_members_csv(member_type: &str) -> Result<String, String> {
+    invoke_cmd(
+        "export_members_csv",
+        to_js(&serde_json::json!({ "memberType": member_type })),
+    )
+    .await
+}
+
+pub async fn export_members_excel(member_type: &str) -> Result<Vec<u8>, String> {
+    invoke_cmd(
+        "export_members_excel",
+        to_js(&serde_json::json!({ "memberType": member_type })),
+    )
+    .await
+}
+
+pub async fn import_members_csv(csv_content: &str, member_type: &str) -> Result<usize, String> {
+    invoke_cmd(
+        "import_members_csv",
+        to_js(&serde_json::json!({ "csvContent": csv_content, "memberType": member_type })),
+    )
+    .await
+}
+
 // ─── Fenêtre ──────────────────────────────────────────────────────────────────
 
 pub async fn minimize_window() -> Result<(), String> {

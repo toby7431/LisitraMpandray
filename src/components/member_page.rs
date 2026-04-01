@@ -5,10 +5,14 @@
 /// `MemberTable`, `MemberForm`, `TransferModal`, `ContributionModal`.
 use leptos::prelude::*;
 
+use js_sys::{Array, Uint8Array};
+use wasm_bindgen::JsCast;
+use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
+
 use crate::{
     components::{
         contribution_modal::{ConfettiLayer, ContributionModal},
-        icons::{IconAlertTriangle, IconPlus, IconSearch, IconTransfer, PageIcon},
+        icons::{IconAlertTriangle, IconDownload, IconPlus, IconSearch, IconTransfer, IconUpload, PageIcon},
         member_form::MemberForm,
         member_table::{MemberTable, SortCol, SortDir, PAGE_SIZE},
         transfer_modal::TransferModal,
@@ -17,6 +21,37 @@ use crate::{
     services::db_service,
     utils::sleep_ms,
 };
+
+// ─── Helper : déclenche le téléchargement d'un fichier texte dans le navigateur ──
+
+fn trigger_xlsx_download(bytes: &[u8], filename: &str) -> Result<(), String> {
+    let window   = web_sys::window().ok_or("Pas de window")?;
+    let document = window.document().ok_or("Pas de document")?;
+
+    let uint8 = Uint8Array::from(bytes);
+    let parts = Array::new();
+    parts.push(&uint8);
+
+    let opts = BlobPropertyBag::new();
+    opts.set_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    let blob = Blob::new_with_u8_array_sequence_and_options(&parts, &opts)
+        .map_err(|e| format!("Erreur Blob : {e:?}"))?;
+    let url = Url::create_object_url_with_blob(&blob)
+        .map_err(|e| format!("Erreur URL : {e:?}"))?;
+
+    let a = document
+        .create_element("a")
+        .map_err(|e| format!("{e:?}"))?
+        .dyn_into::<HtmlAnchorElement>()
+        .map_err(|e| format!("{e:?}"))?;
+    a.set_href(&url);
+    a.set_download(filename);
+    a.click();
+
+    let _ = Url::revoke_object_url(&url);
+    Ok(())
+}
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
@@ -43,13 +78,23 @@ pub fn MemberPage(
     let membres: RwSignal<Vec<MemberWithTotal>> = RwSignal::new(vec![]);
     let loading   = RwSignal::new(true);
 
-    // ── Notification d'erreur flottante (auto-dismiss 4 s) ─────────────────────
-    let notif_error: RwSignal<Option<String>> = RwSignal::new(None);
+    // ── Notifications flottantes (auto-dismiss 4 s) ────────────────────────────
+    let notif_error:   RwSignal<Option<String>> = RwSignal::new(None);
+    let notif_success: RwSignal<Option<String>> = RwSignal::new(None);
+
     Effect::new(move |_| {
         if notif_error.get().is_some() {
             leptos::task::spawn_local(async move {
                 sleep_ms(4000).await;
                 notif_error.set(None);
+            });
+        }
+    });
+    Effect::new(move |_| {
+        if notif_success.get().is_some() {
+            leptos::task::spawn_local(async move {
+                sleep_ms(4000).await;
+                notif_success.set(None);
             });
         }
     });
@@ -198,6 +243,70 @@ pub fn MemberPage(
     let contrib_membre_nom: RwSignal<String> = RwSignal::new(String::new());
     let confetti_active:    RwSignal<bool>   = RwSignal::new(false);
 
+    // ── Export CSV ────────────────────────────────────────────────────────────
+    let export_loading: RwSignal<bool> = RwSignal::new(false);
+
+    let do_export = move |_| {
+        export_loading.set(true);
+        leptos::task::spawn_local(async move {
+            match db_service::export_members_excel(member_type).await {
+                Ok(bytes) => {
+                    let filename = format!("{}.xlsx", member_type.to_lowercase());
+                    if let Err(e) = trigger_xlsx_download(&bytes, &filename) {
+                        notif_error.set(Some(e));
+                    }
+                }
+                Err(e) => notif_error.set(Some(e)),
+            }
+            export_loading.set(false);
+        });
+    };
+
+    // ── Import CSV ────────────────────────────────────────────────────────────
+    let file_input_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+    let import_loading: RwSignal<bool> = RwSignal::new(false);
+
+    let trigger_import = move |_| {
+        if let Some(el) = file_input_ref.get() {
+            el.click();
+        }
+    };
+
+    let on_file_selected = move |_| {
+        // HtmlElement<Input> derefs to web_sys::HtmlInputElement
+        let Some(el)    = file_input_ref.get() else { return; };
+        let Some(files) = el.files() else { return; };
+        let Some(file)  = files.get(0) else { return; };
+        let text_promise = file.text();
+        import_loading.set(true);
+        leptos::task::spawn_local(async move {
+            match wasm_bindgen_futures::JsFuture::from(text_promise).await {
+                Ok(val) => {
+                    let text: String = val.as_string().unwrap_or_default();
+                    match db_service::import_members_csv(&text, member_type).await {
+                        Ok(count) => {
+                            notif_success.set(Some(format!(
+                                "{count} membre{} importé{}",
+                                if count > 1 { "s" } else { "" },
+                                if count > 1 { "s" } else { "" },
+                            )));
+                            refresh_ctr.update(|n| *n += 1);
+                        }
+                        Err(e) => notif_error.set(Some(e)),
+                    }
+                }
+                Err(e) => notif_error.set(Some(
+                    e.as_string().unwrap_or_else(|| "Erreur lecture fichier".into())
+                )),
+            }
+            import_loading.set(false);
+            // Réinitialiser pour permettre de re-sélectionner le même fichier
+            if let Some(el) = file_input_ref.get() {
+                el.set_value("");
+            }
+        });
+    };
+
     // ─── Vue ──────────────────────────────────────────────────────────────────
     view! {
         <div class="animate-fade-in space-y-4 sm:space-y-5">
@@ -215,6 +324,25 @@ pub fn MemberPage(
                         on:click=move |_| notif_error.set(None)
                         class="btn-ripple text-red-400 hover:text-red-600 \
                                dark:hover:text-red-200 rounded p-0.5 transition-colors"
+                    >
+                        "✕"
+                    </button>
+                </div>
+            })}
+
+            // ── Notification de succès flottante ───────────────────────────────
+            {move || notif_success.get().map(|msg| view! {
+                <div class="fixed top-5 right-5 z-[100] flex items-start gap-3 \
+                            px-4 py-3 rounded-2xl shadow-2xl border \
+                            bg-white dark:bg-gray-800 \
+                            border-green-200 dark:border-green-700 \
+                            max-w-xs w-full animate-fade-in">
+                    <span class="text-green-500 dark:text-green-400 shrink-0 mt-0.5 text-lg leading-none">"✓"</span>
+                    <p class="text-sm text-green-700 dark:text-green-300 flex-1 leading-snug">{msg}</p>
+                    <button
+                        on:click=move |_| notif_success.set(None)
+                        class="btn-ripple text-green-400 hover:text-green-600 \
+                               dark:hover:text-green-200 rounded p-0.5 transition-colors"
                     >
                         "✕"
                     </button>
@@ -251,6 +379,52 @@ pub fn MemberPage(
                             </button>
                         })
                     }}
+
+                    // ── Bouton Exporter ──────────────────────────────────────
+                    <button
+                        on:click=do_export
+                        disabled=move || export_loading.get()
+                        class="btn-ripple px-3 py-2 text-xs sm:text-sm font-semibold \
+                               text-gray-700 dark:text-gray-200 \
+                               bg-white/80 dark:bg-gray-700/80 \
+                               border border-gray-200 dark:border-gray-600 \
+                               hover:bg-gray-50 dark:hover:bg-gray-600 \
+                               rounded-xl transition-colors duration-200 \
+                               flex items-center gap-1.5 shadow-sm \
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Exporter la liste en Excel (.xlsx)"
+                    >
+                        <IconUpload class="w-4 h-4" />
+                        {move || if export_loading.get() { "Export…" } else { "Exporter" }}
+                    </button>
+
+                    // ── Bouton Importer ──────────────────────────────────────
+                    <button
+                        on:click=trigger_import
+                        disabled=move || import_loading.get()
+                        class="btn-ripple px-3 py-2 text-xs sm:text-sm font-semibold \
+                               text-gray-700 dark:text-gray-200 \
+                               bg-white/80 dark:bg-gray-700/80 \
+                               border border-gray-200 dark:border-gray-600 \
+                               hover:bg-gray-50 dark:hover:bg-gray-600 \
+                               rounded-xl transition-colors duration-200 \
+                               flex items-center gap-1.5 shadow-sm \
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Importer depuis un fichier CSV"
+                    >
+                        <IconDownload class="w-4 h-4" />
+                        {move || if import_loading.get() { "Import…" } else { "Importer" }}
+                    </button>
+
+                    // ── Input fichier caché ──────────────────────────────────
+                    <input
+                        type="file"
+                        accept=".csv"
+                        style="display:none"
+                        node_ref=file_input_ref
+                        on:change=on_file_selected
+                    />
+
                     <button
                         on:click=move |_| { reset_form(); modal_ouvert.set(true); }
                         class=format!("btn-ripple px-3 sm:px-4 py-2 {} text-white rounded-xl \

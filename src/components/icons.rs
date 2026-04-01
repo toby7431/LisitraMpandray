@@ -119,6 +119,18 @@ lucide!(IconCoins,
      <path d='m16.71 13.88.7.71-2.82 2.82'/>"
 );
 
+lucide!(IconDownload,
+    "<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/>\
+     <polyline points='7 10 12 15 17 10'/>\
+     <line x1='12' y1='15' x2='12' y2='3'/>"
+);
+
+lucide!(IconUpload,
+    "<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/>\
+     <polyline points='17 8 12 3 7 8'/>\
+     <line x1='12' y1='3' x2='12' y2='15'/>"
+);
+
 // Transfert (flèches opposées) — bouton "Transférer vers Communiants".
 lucide!(IconTransfer,
     "<path d='m16 3 4 4-4 4'/>\

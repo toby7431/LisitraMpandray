@@ -1,108 +1,348 @@
-Setting up MSVC environment...
-'vswhere.exe' is not recognized as an internal or external command,
-operable program or batch file.
-**********************************************************************
-** Visual Studio 2022 Developer Command Prompt v17.0
-** Copyright (c) 2025 Microsoft Corporation
-**********************************************************************
-[vcvarsall.bat] Environment initialized for: 'x64'
-MSVC environment ready.
-Checking link.exe...
-C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\link.exe
-Starting cargo tauri dev...
      Running BeforeDevCommand (`trunk serve --port 8080 --open false`)
-2026-03-13T06:47:53.192846Z  INFO Starting trunk 0.21.14
-2026-03-13T06:47:53.801568Z  INFO starting build
+2026-03-30T18:55:20.192953Z  INFO Starting trunk 0.21.14
+2026-03-30T18:55:21.112285Z  INFO starting build
+   Compiling eglise-gestion v0.1.0 (D:\lisitra_mpandray\EgliseManager)
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 246ms.
+        Warn Waiting for your frontend dev server to start on http://localhost:8080/...
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.08s
+2026-03-30T18:55:30.997748Z  INFO applying new distribution
+2026-03-30T18:55:31.001665Z  INFO success
+2026-03-30T18:55:31.001743Z  INFO serving static assets at -> /
+2026-03-30T18:55:31.004341Z  INFO server listening at:
+2026-03-30T18:55:31.004361Z  INFO     http://127.0.0.1:8080/
+2026-03-30T18:55:31.006775Z  INFO     http://localhost.:8080/
+2026-03-30T18:55:31.008328Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 252ms.
+2026-03-30T18:55:32.765224Z  INFO applying new distribution
+2026-03-30T18:55:32.768477Z  INFO success
+2026-03-30T18:55:32.768499Z  INFO starting build
      Running DevCommand (`cargo  run --no-default-features --color always --`)
 [1m[92m    Blocking[0m waiting for file lock on package cache
         Info Watching D:\lisitra_mpandray\EgliseManager\src-tauri for changes...
     Blocking waiting for file lock on package cache
-[1m[92m    Blocking[0m waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-[1m[92m    Blocking[0m waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-[1m[92m    Blocking[0m waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s
 Browserslist: caniuse-lite is outdated. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
-    Blocking waiting for file lock on artifact directory
-[1m[92m    Blocking[0m waiting for file lock on artifact directory
+[1m[92m    Blocking[0m waiting for file lock on package cache
 
 Rebuilding...
-warning: function `get_members` is never used
-  --> src\services\db_service.rs:49:14
-   |
-49 | pub async fn get_members() -> Result<Vec<Member>, String> {
-   |              ^^^^^^^^^^^
-   |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-warning: function `get_member` is never used
-  --> src\services\db_service.rs:74:14
-   |
-74 | pub async fn get_member(id: i64) -> Result<Member, String> {
-   |              ^^^^^^^^^^
-
-warning: function `get_contributions` is never used
-   --> src\services\db_service.rs:110:14
-    |
-110 | pub async fn get_contributions(member_id: i64) -> Result<Vec<Contribution>, String> {
-    |              ^^^^^^^^^^^^^^^^^
-
-warning: function `get_contributions_by_year` is never used
-   --> src\services\db_service.rs:119:14
-    |
-119 | pub async fn get_contributions_by_year(year: i32) -> Result<Vec<Contribution>, String> {
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: function `delete_contribution` is never used
-   --> src\services\db_service.rs:137:14
-    |
-137 | pub async fn delete_contribution(id: i64) -> Result<(), String> {
-    |              ^^^^^^^^^^^^^^^^^^^
-
-warning: function `close_year` is never used
-   --> src\services\db_service.rs:173:14
-    |
-173 | pub async fn close_year(year: i32, note: Option<String>) -> Result<YearSummary, String> {
-    |              ^^^^^^^^^^
-
-warning: function `reopen_year` is never used
-   --> src\services\db_service.rs:182:14
-    |
-182 | pub async fn reopen_year(year: i32) -> Result<YearSummary, String> {
-    |              ^^^^^^^^^^^
-
-warning: `eglise-gestion` (lib) generated 7 warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s
-
-Done in 352ms.
-[1m[92m   Compiling[0m ring v0.17.14
-[1m[92m   Compiling[0m vswhom-sys v0.1.3
-[1m[92m   Compiling[0m libsqlite3-sys v0.27.0
-[1m[96m    Building[0m [======================>  ] 441/473: ring(bu…[1m[96m    Building[0m [======================>  ] 442/473: ring(bu…                                                            [1m[92m   Compiling[0m vswhom v0.1.0
-[1m[96m    Building[0m [======================>  ] 442/473: ring(bu…[1m[96m    Building[0m [======================>  ] 443/473: ring(bu…                                                            [1m[92m   Compiling[0m embed-resource v3.0.6
-[1m[96m    Building[0m [======================>  ] 443/473: ring(bu…[1m[96m    Building[0m [======================>  ] 444/473: ring(bu…                                                            [1m[92m   Compiling[0m tauri-winres v0.3.5
-[1m[96m    Building[0m [======================>  ] 444/473: ring(bu…[1m[96m    Building[0m [======================>  ] 445/473: ring(bu…                                                            [1m[92m   Compiling[0m tauri-build v2.5.5
-[1m[96m    Building[0m [======================>  ] 445/473: ring(bu…[1m[96m    Building[0m [======================>  ] 446/473: ring(bu…                                                            [1m[92m   Compiling[0m rustls v0.21.12
-[1m[96m    Building[0m [======================>  ] 447/473: ring, t…[1m[96m    Building[0m [======================>  ] 448/473: ring, t…[1m[96m    Building[0m [======================>  ] 449/473: ring, t…[1m[96m    Building[0m [======================>  ] 450/473: ring, t…                                                            [1m[92m   Compiling[0m rustls-webpki v0.101.7
-[1m[92m   Compiling[0m sct v0.7.1
-[1m[96m    Building[0m [======================>  ] 450/473: sct, ru…[1m[96m    Building[0m [======================>  ] 451/473: rustls-…[1m[96m    Building[0m [======================>  ] 452/473: rustls-…[1m[96m    Building[0m [======================>  ] 453/473: rustls-…[1m[96m    Building[0m [======================>  ] 454/473: rustls-…[1m[96m    Building[0m [=======================> ] 455/473: rustls-…[1m[96m    Building[0m [=======================> ] 456/473: tauri-b…                                                            [1m[92m   Compiling[0m tauri v2.10.2
-[1m[92m   Compiling[0m eglise-gestion-tauri v0.1.0 (D:\lisitra_mpandray\EgliseManager\src-tauri)
-[1m[96m    Building[0m [=======================> ] 457/473: rustls,…                                                            [1m[92m   Compiling[0m sqlx-core v0.7.4
-[1m[96m    Building[0m [=======================> ] 457/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 458/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 459/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 460/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 461/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 462/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 463/473: sqlx-co…                                                            [1m[92m   Compiling[0m sqlx-sqlite v0.7.4
-[1m[96m    Building[0m [=======================> ] 463/473: sqlx-co…                                                            [1m[92m   Compiling[0m sqlx-macros-core v0.7.4
-[1m[96m    Building[0m [=======================> ] 463/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 464/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 465/473: sqlx-co…[1m[96m    Building[0m [=======================> ] 466/473: sqlx-ma…[1m[96m    Building[0m [=======================> ] 467/473: sqlx-ma…                                                            [1m[92m   Compiling[0m sqlx-macros v0.7.4
-[1m[96m    Building[0m [=======================> ] 468/473: sqlx-ma…                                                            [1m[92m   Compiling[0m sqlx v0.7.4
-[1m[96m    Building[0m [=======================> ] 469/473: sqlx, t…[1m[96m    Building[0m [=======================> ] 470/473: tauri   [1m[96m    Building[0m [=======================> ] 471/473: eglise-…[1m[96m    Building[0m [=======================> ] 472/473: eglise-…                                                            [1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 33.58s
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m crc32fast v1.5.0
+[1m[92m   Compiling[0m simd-adler32 v0.3.8
+[1m[96m    Building[0m [=======================> ] 465/482: simd-ad…
+Done in 258ms.
+                                                            [1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[96m    Building[0m [=======================> ] 465/482: simd-ad…[1m[96m    Building[0m [=======================> ] 466/482: simd-ad…                                                            [1m[92m   Compiling[0m zopfli v0.8.3
+[1m[96m    Building[0m [=======================> ] 466/482: miniz_o…[1m[96m    Building[0m [=======================> ] 467/482: miniz_o…[1m[96m    Building[0m [=======================> ] 468/482: miniz_o…                                                            [1m[92m   Compiling[0m flate2 v1.1.9
+[1m[96m    Building[0m [=======================> ] 468/482: miniz_o…[1m[96m    Building[0m [=======================> ] 469/482: miniz_o…[1m[96m    Building[0m [=======================> ] 470/482: zopfli,…[1m[96m    Building[0m [=======================> ] 471/482: flate2,…                                                            [1m[92m   Compiling[0m png v0.17.16
+[1m[96m    Building[0m [=======================> ] 471/482: png, fl…                                                            [1m[92m   Compiling[0m zip v2.4.2
+[1m[96m    Building[0m [=======================> ] 471/482: png, fl…[1m[96m    Building[0m [=======================> ] 472/482: png, fl…[1m[96m    Building[0m [=======================> ] 473/482: png, zip                                                            [1m[92m   Compiling[0m ico v0.5.0
+[1m[96m    Building[0m [=======================> ] 473/482: png, ic…[1m[96m    Building[0m [=======================> ] 474/482: ico, zip                                                            [1m[92m   Compiling[0m rust_xlsxwriter v0.80.0
+[1m[96m    Building[0m [=======================> ] 474/482: rust_xl…                                                            [1m[92m   Compiling[0m tauri-codegen v2.5.4
+[1m[96m    Building[0m [=======================> ] 474/482: tauri-c…[1m[96m    Building[0m [=======================> ] 475/482: tauri-c…[1m[96m    Building[0m [=======================> ] 476/482: tauri-c…                                                            [1m[92m   Compiling[0m tauri-macros v2.5.4
+[1m[96m    Building[0m [=======================> ] 477/482: tauri-m…[1m[96m    Building[0m [=======================> ] 478/482: tauri-m…                                                            [1m[92m   Compiling[0m tauri v2.10.2
+[1m[96m    Building[0m [=======================> ] 479/482: tauri                                                               [1m[92m   Compiling[0m eglise-gestion-tauri v0.1.0 (D:\lisitra_mpandray\EgliseManager\src-tauri)
+[1m[96m    Building[0m [=======================> ] 480/482: eglise-…[1m[96m    Building[0m [=======================> ] 481/482: eglise-…                                                            [1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 31.37s
 [1m[92m     Running[0m `D:\lisitra_mpandray\EgliseManager\target\debug\eglise-gestion-tauri.exe`
-2026-03-13T06:48:28.782127Z  INFO applying new distribution
-2026-03-13T06:48:28.943624Z  INFO success
-2026-03-13T06:48:28.943775Z  INFO serving static assets at -> /
-2026-03-13T06:48:28.951490Z  INFO server listening at:
-2026-03-13T06:48:28.951544Z  INFO     http://127.0.0.1:8080/
-2026-03-13T06:48:28.956924Z  INFO     http://kubernetes.docker.internal.:8080/
-2026-03-13T06:48:28.957693Z  INFO starting build
-2026-03-13T06:48:28.960146Z ERROR error from server task error=Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)
-2026-03-13T06:48:28.964358Z ERROR Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)
-       Error The "beforeDevCommand" terminated with a non-zero status code.
+2026-03-30T18:56:05.732276Z  INFO applying new distribution
+2026-03-30T18:56:05.736081Z  INFO success
+2026-03-30T18:56:05.736120Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 265ms.
+2026-03-30T18:56:07.245391Z  INFO applying new distribution
+2026-03-30T18:56:07.249462Z  INFO success
+2026-03-30T18:56:07.249494Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 306ms.
+2026-03-30T18:56:08.883340Z  INFO applying new distribution
+2026-03-30T18:56:08.887487Z  INFO success
+2026-03-30T18:56:09.132412Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 279ms.
+2026-03-30T18:56:10.695831Z  INFO applying new distribution
+2026-03-30T18:56:10.699514Z  INFO success
+2026-03-30T18:56:22.656220Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.23s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 277ms.
+2026-03-30T18:56:24.351950Z  INFO applying new distribution
+2026-03-30T18:56:24.356189Z  INFO success
+2026-03-30T18:56:24.356236Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 276ms.
+2026-03-30T18:56:25.965608Z  INFO applying new distribution
+2026-03-30T18:56:25.969290Z  INFO success
+2026-03-30T18:56:25.969320Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 275ms.
+2026-03-30T18:56:27.531005Z  INFO applying new distribution
+2026-03-30T18:56:27.534455Z  INFO success
+2026-03-30T18:56:27.534479Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 269ms.
+2026-03-30T18:56:29.082204Z  INFO applying new distribution
+2026-03-30T18:56:29.085733Z  INFO success
+2026-03-30T18:56:38.974556Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 289ms.
+2026-03-30T18:56:40.687661Z  INFO applying new distribution
+2026-03-30T18:56:40.692800Z  INFO success
+2026-03-30T18:56:52.661102Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 293ms.
+2026-03-30T18:56:54.430567Z  INFO applying new distribution
+2026-03-30T18:56:54.434608Z  INFO success
+2026-03-30T18:56:54.434640Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 268ms.
+2026-03-30T18:56:56.203661Z  INFO applying new distribution
+2026-03-30T18:56:56.209005Z  INFO success
+2026-03-30T18:56:56.209043Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 275ms.
+2026-03-30T18:56:57.772590Z  INFO applying new distribution
+2026-03-30T18:56:57.775872Z  INFO success
+2026-03-30T18:57:08.985516Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.23s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 285ms.
+2026-03-30T18:57:10.811100Z  INFO applying new distribution
+2026-03-30T18:57:10.814797Z  INFO success
+2026-03-30T18:57:22.673700Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 273ms.
+2026-03-30T18:57:24.332594Z  INFO applying new distribution
+2026-03-30T18:57:24.336338Z  INFO success
+2026-03-30T18:57:24.336364Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 270ms.
+2026-03-30T18:57:25.894566Z  INFO applying new distribution
+2026-03-30T18:57:25.897959Z  INFO success
+2026-03-30T18:57:25.897987Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 276ms.
+2026-03-30T18:57:27.435697Z  INFO applying new distribution
+2026-03-30T18:57:27.440516Z  INFO success
+2026-03-30T18:57:38.986228Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 271ms.
+2026-03-30T18:57:40.539718Z  INFO applying new distribution
+2026-03-30T18:57:40.544282Z  INFO success
+2026-03-30T18:57:52.668975Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 269ms.
+2026-03-30T18:57:54.192163Z  INFO applying new distribution
+2026-03-30T18:57:54.195506Z  INFO success
+2026-03-30T18:58:08.988542Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.23s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 292ms.
+2026-03-30T18:58:10.635233Z  INFO applying new distribution
+2026-03-30T18:58:10.639848Z  INFO success
+2026-03-30T18:58:22.679682Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 272ms.
+2026-03-30T18:58:24.197514Z  INFO applying new distribution
+2026-03-30T18:58:24.200754Z  INFO success
+2026-03-30T18:58:38.980512Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 265ms.
+2026-03-30T18:58:40.459480Z  INFO applying new distribution
+2026-03-30T18:58:40.462919Z  INFO success
+2026-03-30T18:58:52.688283Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 257ms.
+2026-03-30T18:58:54.259806Z  INFO applying new distribution
+2026-03-30T18:58:54.263183Z  INFO success
+2026-03-30T18:59:08.990916Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 267ms.
+2026-03-30T18:59:10.533724Z  INFO applying new distribution
+2026-03-30T18:59:10.537270Z  INFO success
+2026-03-30T18:59:22.695196Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 259ms.
+2026-03-30T18:59:24.155628Z  INFO applying new distribution
+2026-03-30T18:59:24.159369Z  INFO success
+2026-03-30T18:59:39.000485Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 260ms.
+2026-03-30T18:59:40.471984Z  INFO applying new distribution
+2026-03-30T18:59:40.475909Z  INFO success
+2026-03-30T18:59:47.779709Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 263ms.
+2026-03-30T18:59:49.245360Z  INFO applying new distribution
+2026-03-30T18:59:49.248847Z  INFO success
+2026-03-30T18:59:49.248871Z  INFO starting build
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 272ms.
+2026-03-30T18:59:50.832340Z  INFO applying new distribution
+2026-03-30T18:59:50.838255Z  INFO success

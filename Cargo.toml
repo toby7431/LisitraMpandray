@@ -26,6 +26,13 @@ web-sys = { version = "0.3", features = [
     "Storage",
     "MediaQueryList",
     "console",
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+    "HtmlAnchorElement",
+    "File",
+    "FileList",
+    "HtmlInputElement",
 ] }
 # Note : Function, Promise, Reflect viennent de js-sys, pas de web-sys
 serde            = { version = "1", features = ["derive"] }

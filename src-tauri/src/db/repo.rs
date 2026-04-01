@@ -353,6 +353,39 @@ impl Repository {
         Ok(())
     }
 
+    /// Importe une liste de membres en bloc.
+    /// Les entrées avec un numéro de carte déjà existant sont ignorées (INSERT OR IGNORE).
+    /// Retourne le nombre de membres effectivement insérés.
+    pub async fn import_members(&self, members: Vec<MemberInput>) -> Result<usize, AppError> {
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        let mut count = 0usize;
+        for input in members {
+            // Ignorer les lignes invalides silencieusement
+            if Self::validate_member_input(&input).is_err() {
+                continue;
+            }
+            let result = sqlx::query(
+                "INSERT OR IGNORE INTO members
+                     (card_number, full_name, address, phone, job, gender, member_type, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&input.card_number)
+            .bind(&input.full_name)
+            .bind(&input.address)
+            .bind(&input.phone)
+            .bind(&input.job)
+            .bind(&input.gender)
+            .bind(&input.member_type)
+            .bind(&now)
+            .execute(&self.pool)
+            .await?;
+            if result.rows_affected() > 0 {
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
     /// Transfère plusieurs membres vers un nouveau type (ex: "Cathekomen" → "Communiant").
     /// Les contributions restent liées à leurs IDs — aucune perte de données.
     pub async fn transfer_members(
