@@ -30,6 +30,8 @@ pub fn Archives() -> impl IntoView {
     let summaries: RwSignal<Vec<YearSummary>> = RwSignal::new(vec![]);
     // Cotisations de l'année sélectionnée
     let contributions: RwSignal<Vec<ContributionWithMember>> = RwSignal::new(vec![]);
+    // Toutes les cotisations (toutes années) pour la recherche globale
+    let all_contributions: RwSignal<Vec<ContributionWithMember>> = RwSignal::new(vec![]);
     // État de chargement
     let loading_sum  = RwSignal::new(true);
     let loading_cont = RwSignal::new(false);
@@ -40,12 +42,16 @@ pub fn Archives() -> impl IntoView {
     // Recherche par nom de membre
     let recherche: RwSignal<String> = RwSignal::new(String::new());
 
-    // ── Charger les résumés au montage ────────────────────────────────────────
+    // ── Charger les résumés + toutes les cotisations au montage ──────────────
     Effect::new(move |_| {
         leptos::task::spawn_local(async move {
             loading_sum.set(true);
             match db_service::get_year_summaries().await {
                 Ok(liste) => summaries.set(liste),
+                Err(e)    => erreur.set(Some(e)),
+            }
+            match db_service::get_all_contributions_with_member().await {
+                Ok(liste) => all_contributions.set(liste),
                 Err(e)    => erreur.set(Some(e)),
             }
             loading_sum.set(false);
@@ -83,13 +89,19 @@ pub fn Archives() -> impl IntoView {
         summaries.get().into_iter().find(|s| s.year == sel)
     });
 
-    // ── Cotisations filtrées par nom (déjà triées ASC par le backend) ────────────
+    // ── Cotisations filtrées :
+    //    - si recherche active → toutes années, triées par date ASC
+    //    - si vide            → année sélectionnée uniquement
     let filtered = Memo::new(move |_| {
         let q = recherche.get().to_lowercase();
-        contributions.get()
-            .into_iter()
-            .filter(|c| c.member_name.to_lowercase().contains(&q))
-            .collect::<Vec<_>>()
+        if q.is_empty() {
+            contributions.get()
+        } else {
+            all_contributions.get()
+                .into_iter()
+                .filter(|c| c.member_name.to_lowercase().contains(&q))
+                .collect::<Vec<_>>()
+        }
     });
 
     view! {
@@ -337,6 +349,16 @@ pub fn Archives() -> impl IntoView {
                                                                hidden sm:table-cell">
                                                         "Date"
                                                     </th>
+                                                    {move || if recherche.get().is_empty() {
+                                                        view! { <th class="hidden" /> }.into_any()
+                                                    } else {
+                                                        view! {
+                                                            <th class="text-right px-4 py-3 font-semibold \
+                                                                       hidden sm:table-cell">
+                                                                "Année"
+                                                            </th>
+                                                        }.into_any()
+                                                    }}
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 \
@@ -365,8 +387,19 @@ pub fn Archives() -> impl IntoView {
                                                             <td class="px-4 py-2.5 text-right \
                                                                        text-gray-400 dark:text-gray-500 \
                                                                        text-xs hidden sm:table-cell">
-                                                                {c.payment_date}
+                                                                {c.payment_date.clone()}
                                                             </td>
+                                                            {move || if recherche.get().is_empty() {
+                                                                view! { <td class="hidden" /> }.into_any()
+                                                            } else {
+                                                                view! {
+                                                                    <td class="px-4 py-2.5 text-right \
+                                                                               text-blue-500 dark:text-blue-400 \
+                                                                               text-xs font-medium hidden sm:table-cell">
+                                                                        {c.recorded_year.to_string()}
+                                                                    </td>
+                                                                }.into_any()
+                                                            }}
                                                         </tr>
                                                     }
                                                 }).collect_view()}
@@ -398,6 +431,11 @@ pub fn Archives() -> impl IntoView {
                                                                 {total_fmt}
                                                             </td>
                                                             <td class="hidden sm:table-cell" />
+                                                            {move || if recherche.get().is_empty() {
+                                                                view! { <td class="hidden" /> }.into_any()
+                                                            } else {
+                                                                view! { <td class="hidden sm:table-cell" /> }.into_any()
+                                                            }}
                                                         </tr>
                                                     </tfoot>
                                                 }

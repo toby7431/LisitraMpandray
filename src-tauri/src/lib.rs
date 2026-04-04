@@ -105,6 +105,12 @@ impl DataSource {
         dispatch!(self, get_contributions_by_year_with_member, year)
     }
 
+    async fn get_all_contributions_with_member(
+        &self,
+    ) -> Result<Vec<ContributionWithMember>, String> {
+        dispatch!(self, get_all_contributions_with_member)
+    }
+
     // ── Year Summaries ────────────────────────────────────────────────────────
 
     async fn get_year_summaries(&self) -> Result<Vec<YearSummary>, String> {
@@ -399,6 +405,13 @@ async fn get_contributions_by_year_with_member(
 }
 
 #[tauri::command]
+async fn get_all_contributions_with_member(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<ContributionWithMember>, String> {
+    state.source.read().await.get_all_contributions_with_member().await
+}
+
+#[tauri::command]
 async fn check_and_close_previous_year(
     state: tauri::State<'_, AppState>,
 ) -> Result<Option<YearSummary>, String> {
@@ -531,6 +544,7 @@ pub fn run() {
             transfer_members,
             // Archives
             get_contributions_by_year_with_member,
+            get_all_contributions_with_member,
             check_and_close_previous_year,
             // Import / Export
             export_members_csv,

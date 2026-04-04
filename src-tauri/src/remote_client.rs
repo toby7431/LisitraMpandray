@@ -179,6 +179,12 @@ impl RemoteClient {
         self.get_json(&format!("/api/contributions/by-year/{year}/with-member")).await
     }
 
+    pub async fn get_all_contributions_with_member(
+        &self,
+    ) -> Result<Vec<ContributionWithMember>, AppError> {
+        self.get_json("/api/contributions/all/with-member").await
+    }
+
     // ── Year Summaries ────────────────────────────────────────────────────────
 
     pub async fn get_year_summaries(&self) -> Result<Vec<YearSummary>, AppError> {

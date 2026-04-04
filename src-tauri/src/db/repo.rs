@@ -483,6 +483,37 @@ impl Repository {
             .collect())
     }
 
+    /// Toutes les cotisations toutes années confondues, triées par date ASC.
+    pub async fn get_all_contributions_with_member(
+        &self,
+    ) -> Result<Vec<ContributionWithMember>, AppError> {
+        let rows = sqlx::query(
+            "SELECT c.id, c.member_id, m.full_name AS member_name,
+                    c.payment_date, c.period, c.amount, c.recorded_year
+             FROM contributions c
+             JOIN members m ON m.id = c.member_id
+             ORDER BY c.payment_date ASC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                let amount_str: String = r.get("amount");
+                ContributionWithMember {
+                    id:            r.get("id"),
+                    member_id:     r.get("member_id"),
+                    member_name:   r.get("member_name"),
+                    payment_date:  r.get("payment_date"),
+                    period:        r.get("period"),
+                    amount:        Decimal::from_str(&amount_str).unwrap_or(Decimal::ZERO),
+                    recorded_year: r.get("recorded_year"),
+                }
+            })
+            .collect())
+    }
+
     /// Vérifie si l'année précédente est déjà clôturée.
     /// Si non → calcule le total, génère une note et clôture automatiquement.
     /// Retourne `Some(YearSummary)` si une clôture vient d'être effectuée, `None` sinon.

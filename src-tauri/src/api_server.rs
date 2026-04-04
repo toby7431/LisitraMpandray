@@ -44,6 +44,7 @@ pub async fn start_server(repo: Repository, port: u16) {
         .route("/api/contributions", post(create_contribution))
         .route("/api/contributions/by-member/:member_id", get(get_contributions_by_member))
         .route("/api/contributions/by-year/:year/with-member", get(get_contributions_by_year_with_member))
+        .route("/api/contributions/all/with-member", get(get_all_contributions_with_member))
         .route("/api/contributions/by-year/:year", get(get_contributions_by_year))
         .route("/api/contributions/:id", delete(delete_contribution_route))
         // Year summaries
@@ -180,6 +181,15 @@ async fn get_contributions_by_year_with_member(
     Path(year): Path<i32>,
 ) -> Result<impl IntoResponse, ApiErr> {
     repo.get_contributions_by_year_with_member(year)
+        .await
+        .map(Json)
+        .map_err(e500)
+}
+
+async fn get_all_contributions_with_member(
+    State(repo): State<Repo>,
+) -> Result<impl IntoResponse, ApiErr> {
+    repo.get_all_contributions_with_member()
         .await
         .map(Json)
         .map_err(e500)

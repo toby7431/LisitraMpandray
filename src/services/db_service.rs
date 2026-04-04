@@ -140,6 +140,14 @@ pub async fn get_contributions_by_year_with_member(
     .await
 }
 
+pub async fn get_all_contributions_with_member() -> Result<Vec<ContributionWithMember>, String> {
+    invoke_cmd(
+        "get_all_contributions_with_member",
+        to_js(&serde_json::json!({})),
+    )
+    .await
+}
+
 // ─── YearSummary ──────────────────────────────────────────────────────────────
 
 pub async fn get_year_summaries() -> Result<Vec<YearSummary>, String> {
