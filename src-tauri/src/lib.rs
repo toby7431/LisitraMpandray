@@ -10,8 +10,8 @@ static API_SERVER_PORT: std::sync::OnceLock<u16> = std::sync::OnceLock::new();
 
 use config::{load_config, save_config_to_disk, AppConfig, AppMode};
 use db::{
-    Contribution, ContributionInput, ContributionWithMember, Member, MemberInput, MemberWithTotal,
-    Repository, YearSummary,
+    Contribution, ContributionEditInput, ContributionInput, ContributionWithMember, Member,
+    MemberInput, MemberWithTotal, Repository, YearSummary,
 };
 use export::{build_csv_from_members, build_excel_bytes, parse_csv_to_members};
 use remote_client::RemoteClient;
@@ -166,6 +166,24 @@ impl DataSource {
             DataSource::Remote(c) => c.import_members_csv(csv_content, member_type).await.map_err(|e| e.to_string()),
             DataSource::Unconfigured => Err(Self::not_configured()),
         }
+    }
+
+    // ── PIN ───────────────────────────────────────────────────────────────────
+
+    async fn set_pin(&self, pin: String) -> Result<(), String> {
+        dispatch!(self, set_pin, &pin)
+    }
+
+    async fn verify_pin(&self, pin: String) -> Result<bool, String> {
+        dispatch!(self, verify_pin, &pin)
+    }
+
+    async fn update_contribution(
+        &self,
+        id: i64,
+        input: ContributionEditInput,
+    ) -> Result<Contribution, String> {
+        dispatch!(self, update_contribution, id, input)
     }
 }
 
@@ -450,6 +468,27 @@ async fn import_members_csv(
         .await
 }
 
+// ─── Commandes PIN + édition contribution ─────────────────────────────────────
+
+#[tauri::command]
+async fn set_pin(state: tauri::State<'_, AppState>, pin: String) -> Result<(), String> {
+    state.source.read().await.set_pin(pin).await
+}
+
+#[tauri::command]
+async fn verify_pin(state: tauri::State<'_, AppState>, pin: String) -> Result<bool, String> {
+    state.source.read().await.verify_pin(pin).await
+}
+
+#[tauri::command]
+async fn update_contribution(
+    state: tauri::State<'_, AppState>,
+    id: i64,
+    input: ContributionEditInput,
+) -> Result<Contribution, String> {
+    state.source.read().await.update_contribution(id, input).await
+}
+
 // ─── Commandes fenêtre ─────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -550,6 +589,10 @@ pub fn run() {
             export_members_csv,
             export_members_excel,
             import_members_csv,
+            // PIN + édition contribution
+            set_pin,
+            verify_pin,
+            update_contribution,
             // Fenêtre
             minimize_window,
             toggle_maximize,

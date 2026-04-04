@@ -1,3 +1,4 @@
+pub mod contribution_edit_modal;
 pub mod contribution_modal;
 pub mod icons;
 pub mod member_form;

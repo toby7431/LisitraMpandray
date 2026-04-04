@@ -4,8 +4,8 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::db::{
-    AppError, Contribution, ContributionInput, ContributionWithMember, Member, MemberInput,
-    MemberWithTotal, YearSummary,
+    AppError, Contribution, ContributionEditInput, ContributionInput, ContributionWithMember,
+    Member, MemberInput, MemberWithTotal, YearSummary,
 };
 
 pub struct RemoteClient {
@@ -207,6 +207,27 @@ impl RemoteClient {
 
     pub async fn check_and_close_previous_year(&self) -> Result<Option<YearSummary>, AppError> {
         self.post_json("/api/year/check-close", &serde_json::json!({})).await
+    }
+
+    // ── PIN ───────────────────────────────────────────────────────────────────
+
+    pub async fn set_pin(&self, _pin: &str) -> Result<(), AppError> {
+        // Le PIN ne se configure que sur le serveur local ; le client ne peut pas l'appeler.
+        Err(AppError::Validation("Le PIN ne peut être configuré que sur le serveur.".into()))
+    }
+
+    pub async fn verify_pin(&self, pin: &str) -> Result<bool, AppError> {
+        #[derive(Serialize)]
+        struct Body<'a> { pin: &'a str }
+        self.post_json("/api/verify-pin", &Body { pin }).await
+    }
+
+    pub async fn update_contribution(
+        &self,
+        id: i64,
+        input: ContributionEditInput,
+    ) -> Result<Contribution, AppError> {
+        self.put_json(&format!("/api/contributions/{id}"), &input).await
     }
 
     // ── Export / Import ───────────────────────────────────────────────────────

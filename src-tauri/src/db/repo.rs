@@ -448,15 +448,23 @@ impl Repository {
         Ok(rows.iter().map(Self::map_contribution).collect())
     }
 
-    /// Cotisations d'une année avec le nom du membre (JOIN).
-    /// Triées par date ASC (la plus ancienne en tête) — cohérent avec l'affichage archives.
+    /// Cotisations d'une année avec le nom du membre + résumé audit (JOIN).
     pub async fn get_contributions_by_year_with_member(
         &self,
         year: i32,
     ) -> Result<Vec<ContributionWithMember>, AppError> {
         let rows = sqlx::query(
             "SELECT c.id, c.member_id, m.full_name AS member_name,
-                    c.payment_date, c.period, c.amount, c.recorded_year
+                    c.payment_date, c.period, c.amount, c.recorded_year,
+                    (SELECT GROUP_CONCAT(summary, ' · ')
+                     FROM (SELECT CASE field
+                               WHEN 'amount' THEN old_value || ' Ar → ' || new_value || ' Ar'
+                               ELSE old_value || ' → ' || new_value
+                           END AS summary
+                           FROM contribution_audits
+                           WHERE contribution_id = c.id
+                           ORDER BY changed_at ASC)
+                    ) AS audit_summary
              FROM contributions c
              JOIN members m ON m.id = c.member_id
              WHERE c.recorded_year = ?
@@ -478,18 +486,28 @@ impl Repository {
                     period:        r.get("period"),
                     amount:        Decimal::from_str(&amount_str).unwrap_or(Decimal::ZERO),
                     recorded_year: r.get("recorded_year"),
+                    audit_summary: r.get("audit_summary"),
                 }
             })
             .collect())
     }
 
-    /// Toutes les cotisations toutes années confondues, triées par date ASC.
+    /// Toutes les cotisations toutes années confondues, triées par date ASC + résumé audit.
     pub async fn get_all_contributions_with_member(
         &self,
     ) -> Result<Vec<ContributionWithMember>, AppError> {
         let rows = sqlx::query(
             "SELECT c.id, c.member_id, m.full_name AS member_name,
-                    c.payment_date, c.period, c.amount, c.recorded_year
+                    c.payment_date, c.period, c.amount, c.recorded_year,
+                    (SELECT GROUP_CONCAT(summary, ' · ')
+                     FROM (SELECT CASE field
+                               WHEN 'amount' THEN old_value || ' Ar → ' || new_value || ' Ar'
+                               ELSE old_value || ' → ' || new_value
+                           END AS summary
+                           FROM contribution_audits
+                           WHERE contribution_id = c.id
+                           ORDER BY changed_at ASC)
+                    ) AS audit_summary
              FROM contributions c
              JOIN members m ON m.id = c.member_id
              ORDER BY c.payment_date ASC",
@@ -509,9 +527,175 @@ impl Repository {
                     period:        r.get("period"),
                     amount:        Decimal::from_str(&amount_str).unwrap_or(Decimal::ZERO),
                     recorded_year: r.get("recorded_year"),
+                    audit_summary: r.get("audit_summary"),
                 }
             })
             .collect())
+    }
+
+    // ── PIN ───────────────────────────────────────────────────────────────────
+
+    /// Définit le code PIN admin (une seule fois). Erreur si déjà défini.
+    pub async fn set_pin(&self, pin: &str) -> Result<(), AppError> {
+        use sha2::{Digest, Sha256};
+
+        if pin.len() < 4 || !pin.chars().all(|c| c.is_ascii_digit()) {
+            return Err(AppError::Validation(
+                "Le code PIN doit contenir au moins 4 chiffres.".into(),
+            ));
+        }
+        let existing: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = 'admin_pin'",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        if existing.is_some() {
+            return Err(AppError::Validation("Un code PIN est déjà configuré.".into()));
+        }
+        let mut hasher = Sha256::new();
+        hasher.update(pin.as_bytes());
+        let hash = format!("{:x}", hasher.finalize());
+        sqlx::query("INSERT INTO settings (key, value) VALUES ('admin_pin', ?)")
+            .bind(&hash)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Vérifie le code PIN. Retourne false si PIN incorrect, erreur si non configuré.
+    pub async fn verify_pin(&self, pin: &str) -> Result<bool, AppError> {
+        use sha2::{Digest, Sha256};
+        let stored: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = 'admin_pin'",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        let stored = match stored {
+            Some(h) => h,
+            None => return Err(AppError::Validation("Code PIN non configuré.".into())),
+        };
+        let mut hasher = Sha256::new();
+        hasher.update(pin.as_bytes());
+        let hash = format!("{:x}", hasher.finalize());
+        Ok(hash == stored)
+    }
+
+    /// Modifie une contribution existante après vérification du PIN.
+    /// Crée une entrée d'audit pour chaque champ modifié.
+    /// Interdit si l'année est clôturée.
+    pub async fn update_contribution(
+        &self,
+        id: i64,
+        input: crate::db::ContributionEditInput,
+    ) -> Result<Contribution, AppError> {
+        // 1. Vérifier le PIN
+        if !self.verify_pin(&input.pin).await? {
+            return Err(AppError::Validation("Code PIN incorrect.".into()));
+        }
+        // 2. Valider le montant
+        let new_amount = Decimal::from_str(input.amount.trim())
+            .map_err(|_| AppError::Validation("Montant invalide.".into()))?;
+        if new_amount <= Decimal::ZERO {
+            return Err(AppError::Validation("Le montant doit être positif.".into()));
+        }
+        // 3. Valider la date
+        let new_recorded_year: i32 = NaiveDate::parse_from_str(&input.payment_date, "%Y-%m-%d")
+            .map(|d| d.year())
+            .map_err(|_| AppError::Validation(
+                format!("Date invalide : '{}'. Format YYYY-MM-DD.", input.payment_date),
+            ))?;
+
+        let mut tx = self.pool.begin().await?;
+
+        // 4. Récupérer l'ancienne contribution
+        let old_row = sqlx::query(
+            "SELECT member_id, payment_date, period, amount, recorded_year
+             FROM contributions WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let old_year: i32        = old_row.get("recorded_year");
+        let old_amount_str: String = old_row.get("amount");
+        let old_amount = Decimal::from_str(&old_amount_str).unwrap_or(Decimal::ZERO);
+        let old_period: String   = old_row.get("period");
+        let old_date: String     = old_row.get("payment_date");
+        let member_id: i64       = old_row.get("member_id");
+
+        // 5. Vérifier que l'année n'est pas clôturée
+        let closed: Option<Option<String>> = sqlx::query_scalar(
+            "SELECT closed_at FROM year_summaries WHERE year = ?",
+        )
+        .bind(old_year)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if closed.flatten().is_some() {
+            return Err(AppError::Validation(
+                "Impossible de modifier une contribution d'une année clôturée.".into(),
+            ));
+        }
+
+        // 6. Mettre à jour la contribution
+        sqlx::query(
+            "UPDATE contributions
+             SET payment_date = ?, period = ?, amount = ?, recorded_year = ?
+             WHERE id = ?",
+        )
+        .bind(&input.payment_date)
+        .bind(&input.period)
+        .bind(new_amount.to_string())
+        .bind(new_recorded_year)
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+        // 7. Recalculer les totaux annuels
+        Self::refresh_year_total_tx(&mut tx, old_year).await?;
+        if new_recorded_year != old_year {
+            Self::refresh_year_total_tx(&mut tx, new_recorded_year).await?;
+        }
+
+        // 8. Créer les entrées d'audit pour les champs modifiés
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        let reason_opt: Option<String> = if input.reason.trim().is_empty() {
+            None
+        } else {
+            Some(input.reason.trim().to_string())
+        };
+
+        for (field, old_val, new_val) in [
+            ("amount",       old_amount.to_string(), new_amount.to_string()),
+            ("period",       old_period.clone(),     input.period.clone()),
+            ("payment_date", old_date.clone(),        input.payment_date.clone()),
+        ] {
+            if old_val != new_val {
+                sqlx::query(
+                    "INSERT INTO contribution_audits
+                         (contribution_id, field, old_value, new_value, changed_at, reason)
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                )
+                .bind(id)
+                .bind(field)
+                .bind(&old_val)
+                .bind(&new_val)
+                .bind(&now)
+                .bind(&reason_opt)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+
+        Ok(Contribution {
+            id,
+            member_id,
+            payment_date: input.payment_date,
+            period:        input.period,
+            amount:        new_amount,
+            recorded_year: new_recorded_year,
+        })
     }
 
     /// Vérifie si l'année précédente est déjà clôturée.

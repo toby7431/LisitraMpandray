@@ -9,7 +9,7 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 
 use crate::models::{
-    contribution::{Contribution, ContributionInput, ContributionWithMember},
+    contribution::{Contribution, ContributionEditInput, ContributionInput, ContributionWithMember},
     member::{Member, MemberInput, MemberWithTotal},
     year_summary::YearSummary,
 };
@@ -200,6 +200,23 @@ pub async fn import_members_csv(csv_content: &str, member_type: &str) -> Result<
     invoke_cmd(
         "import_members_csv",
         to_js(&serde_json::json!({ "csvContent": csv_content, "memberType": member_type })),
+    )
+    .await
+}
+
+// ─── PIN + édition contribution ───────────────────────────────────────────────
+
+pub async fn verify_pin(pin: &str) -> Result<bool, String> {
+    invoke_cmd("verify_pin", to_js(&serde_json::json!({ "pin": pin }))).await
+}
+
+pub async fn update_contribution(
+    id: i64,
+    input: &ContributionEditInput,
+) -> Result<Contribution, String> {
+    invoke_cmd(
+        "update_contribution",
+        to_js(&serde_json::json!({ "id": id, "input": input })),
     )
     .await
 }

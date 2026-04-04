@@ -2,11 +2,12 @@
 ///
 /// L'utilisateur choisit le mode (Serveur ou Client) et,
 /// en mode Client, entre l'adresse IP du PC serveur.
+/// En mode Serveur, il définit le code PIN administrateur (une seule fois).
 /// Après validation, la config est sauvegardée et l'app passe en mode normal.
 use leptos::prelude::*;
 
 use crate::services::config_service::{
-    save_config, start_mock_server, test_server_connection, AppConfig, AppMode,
+    save_config, set_pin, start_mock_server, test_server_connection, AppConfig, AppMode,
 };
 
 #[component]
@@ -19,9 +20,13 @@ pub fn SetupPage(
     let server_ip = RwSignal::new(String::new());
     let server_port = RwSignal::new(7654u16);
 
+    // PIN (mode Serveur uniquement)
+    let pin_val     = RwSignal::new(String::new());
+    let pin_confirm = RwSignal::new(String::new());
+
     // ── État UI ───────────────────────────────────────────────────────────────
-    let saving = RwSignal::new(false);
-    let testing = RwSignal::new(false);
+    let saving    = RwSignal::new(false);
+    let testing   = RwSignal::new(false);
     let simulating = RwSignal::new(false);
     let test_result: RwSignal<Option<bool>> = RwSignal::new(None);
     let error_msg: RwSignal<Option<String>> = RwSignal::new(None);
@@ -29,10 +34,10 @@ pub fn SetupPage(
     // ── Actions ───────────────────────────────────────────────────────────────
 
     let on_test = move |_| {
-        let ip = server_ip.get();
+        let ip   = server_ip.get();
         let port = server_port.get();
         if ip.trim().is_empty() {
-            error_msg.set(Some("Ampidiro ny adiresy IP ny mpizara.".to_string()));
+            error_msg.set(Some("Veuillez saisir l'adresse IP du serveur.".to_string()));
             return;
         }
         error_msg.set(None);
@@ -56,13 +61,14 @@ pub fn SetupPage(
                 Ok(port) => {
                     server_ip.set("127.0.0.1".to_string());
                     server_port.set(port);
-                    // Lancer le test automatiquement
                     match test_server_connection("127.0.0.1", port).await {
                         Ok(ok) => test_result.set(Some(ok)),
-                        Err(e) => error_msg.set(Some(format!("Hadisoana andrana : {e}"))),
+                        Err(e) => error_msg.set(Some(format!("Erreur de test : {e}"))),
                     }
                 }
-                Err(e) => error_msg.set(Some(format!("Tsy nahavita nanomboka ny mpizara eo an-toerana : {e}"))),
+                Err(e) => error_msg.set(Some(
+                    format!("Impossible de démarrer le serveur local : {e}")
+                )),
             }
             simulating.set(false);
         });
@@ -70,13 +76,29 @@ pub fn SetupPage(
 
     let on_save = move |_| {
         let current_mode = mode.get();
-        let ip = server_ip.get();
+        let ip   = server_ip.get();
         let port = server_port.get();
+        let pin  = pin_val.get();
+        let conf = pin_confirm.get();
 
-        // Validation mode client
-        if current_mode == AppMode::Client {
-            if ip.trim().is_empty() {
-                error_msg.set(Some("Ampidiro ny adiresy IP ny mpizara.".to_string()));
+        // Validation mode Client
+        if current_mode == AppMode::Client && ip.trim().is_empty() {
+            error_msg.set(Some("Veuillez saisir l'adresse IP du serveur.".to_string()));
+            return;
+        }
+
+        // Validation PIN mode Serveur
+        if current_mode == AppMode::Server {
+            if pin.trim().len() < 4 {
+                error_msg.set(Some(
+                    "Le code PIN doit contenir au moins 4 chiffres.".to_string()
+                ));
+                return;
+            }
+            if pin != conf {
+                error_msg.set(Some(
+                    "Les codes PIN ne correspondent pas.".to_string()
+                ));
                 return;
             }
         }
@@ -96,10 +118,20 @@ pub fn SetupPage(
 
         leptos::task::spawn_local(async move {
             match save_config(&config).await {
-                Ok(_) => is_configured.set(Some(true)),
                 Err(e) => {
-                    error_msg.set(Some(format!("Hadisoana : {e}")));
+                    error_msg.set(Some(format!("Erreur : {e}")));
                     saving.set(false);
+                }
+                Ok(_) => {
+                    // En mode Serveur : enregistrer le PIN après la config
+                    if current_mode == AppMode::Server {
+                        if let Err(e) = set_pin(&pin).await {
+                            error_msg.set(Some(format!("Erreur PIN : {e}")));
+                            saving.set(false);
+                            return;
+                        }
+                    }
+                    is_configured.set(Some(true));
                 }
             }
         });
@@ -122,10 +154,10 @@ pub fn SetupPage(
                     <h1 class="text-2xl font-bold
                                text-blue-900 dark:text-blue-100
                                font-serif">
-                        "Fametrahana voalohany"
+                        "Configuration initiale"
                     </h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400">
-                        "Mpizara sa mpanjifa ity PC ity ?"
+                        "Ce PC est-il le serveur ou le client ?"
                     </p>
                 </div>
 
@@ -144,12 +176,16 @@ pub fn SetupPage(
                                          hover:border-blue-300 dark:hover:border-blue-600")
                             }
                         }
-                        on:click=move |_| { mode.set(AppMode::Server); test_result.set(None); error_msg.set(None); }
+                        on:click=move |_| {
+                            mode.set(AppMode::Server);
+                            test_result.set(None);
+                            error_msg.set(None);
+                        }
                     >
                         <span class="text-2xl">"🖥️"</span>
-                        <span class="font-semibold text-sm">"Mpizara"</span>
+                        <span class="font-semibold text-sm">"Serveur"</span>
                         <span class="text-xs text-center opacity-70">
-                            "Ity PC ity no mitana ny angona"
+                            "Ce PC stocke les données"
                         </span>
                     </button>
 
@@ -166,15 +202,84 @@ pub fn SetupPage(
                                          hover:border-green-300 dark:hover:border-green-600")
                             }
                         }
-                        on:click=move |_| { mode.set(AppMode::Client); error_msg.set(None); }
+                        on:click=move |_| {
+                            mode.set(AppMode::Client);
+                            error_msg.set(None);
+                        }
                     >
                         <span class="text-2xl">"💻"</span>
-                        <span class="font-semibold text-sm">"Mpanjifa"</span>
+                        <span class="font-semibold text-sm">"Client"</span>
                         <span class="text-xs text-center opacity-70">
-                            "Mifandray amin'ny mpizara"
+                            "Se connecte au serveur"
                         </span>
                     </button>
                 </div>
+
+                // ── Champs mode Serveur (PIN) ─────────────────────────────────
+                <Show when=move || mode.get() == AppMode::Server>
+                    <div class="space-y-3">
+                        <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20
+                                    border border-blue-200 dark:border-blue-800
+                                    p-3 text-sm text-blue-700 dark:text-blue-300">
+                            <p class="font-medium mb-1">"ℹ️ Ce PC sera le serveur"</p>
+                            <p class="opacity-80">
+                                "La base de données sera stockée ici. "
+                                "Le serveur API démarrera sur le port "
+                                <strong>{move || server_port.get()}</strong>
+                                " pour permettre aux autres PC de se connecter."
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium
+                                          text-slate-700 dark:text-slate-300 mb-1">
+                                "Code PIN administrateur"
+                            </label>
+                            <input
+                                type="password"
+                                inputmode="numeric"
+                                maxlength="20"
+                                placeholder="Minimum 4 chiffres"
+                                class="w-full px-3 py-2 rounded-lg border
+                                       border-slate-300 dark:border-slate-600
+                                       bg-white dark:bg-slate-700
+                                       text-slate-900 dark:text-slate-100
+                                       placeholder-slate-400
+                                       focus:outline-none focus:ring-2 focus:ring-blue-400
+                                       text-sm"
+                                prop:value=move || pin_val.get()
+                                on:input=move |ev| pin_val.set(event_target_value(&ev))
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium
+                                          text-slate-700 dark:text-slate-300 mb-1">
+                                "Confirmer le code PIN"
+                            </label>
+                            <input
+                                type="password"
+                                inputmode="numeric"
+                                maxlength="20"
+                                placeholder="Répétez le PIN"
+                                class="w-full px-3 py-2 rounded-lg border
+                                       border-slate-300 dark:border-slate-600
+                                       bg-white dark:bg-slate-700
+                                       text-slate-900 dark:text-slate-100
+                                       placeholder-slate-400
+                                       focus:outline-none focus:ring-2 focus:ring-blue-400
+                                       text-sm"
+                                prop:value=move || pin_confirm.get()
+                                on:input=move |ev| pin_confirm.set(event_target_value(&ev))
+                            />
+                        </div>
+
+                        <p class="text-xs text-slate-400 dark:text-slate-500">
+                            "⚠ Ce code PIN est définitif et ne peut pas être modifié ultérieurement. "
+                            "Il sera requis pour modifier des contributions dans les archives."
+                        </p>
+                    </div>
+                </Show>
 
                 // ── Champs mode Client ────────────────────────────────────────
                 <Show when=move || mode.get() == AppMode::Client>
@@ -182,7 +287,7 @@ pub fn SetupPage(
                         <div>
                             <label class="block text-sm font-medium
                                           text-slate-700 dark:text-slate-300 mb-1">
-                                "Adiresy IP ny mpizara"
+                                "Adresse IP du serveur"
                             </label>
                             <input
                                 type="text"
@@ -205,7 +310,7 @@ pub fn SetupPage(
                         <div>
                             <label class="block text-sm font-medium
                                           text-slate-700 dark:text-slate-300 mb-1">
-                                "Vala"
+                                "Port"
                             </label>
                             <input
                                 type="number"
@@ -238,9 +343,9 @@ pub fn SetupPage(
                             on:click=on_test
                         >
                             {move || if testing.get() {
-                                "Andramana mandeha…".to_string()
+                                "Test en cours…".to_string()
                             } else {
-                                "🔌 Andramana ny fampifandraisana".to_string()
+                                "🔌 Tester la connexion".to_string()
                             }}
                         </button>
 
@@ -256,9 +361,9 @@ pub fn SetupPage(
                             on:click=on_simulate
                         >
                             {move || if simulating.get() {
-                                "Fanombohana ny mpizara eo an-toerana…".to_string()
+                                "Démarrage du serveur local…".to_string()
                             } else {
-                                "🧪 Andrana (ity PC ity ihany)".to_string()
+                                "🧪 Simulation (ce PC uniquement)".to_string()
                             }}
                         </button>
 
@@ -266,31 +371,16 @@ pub fn SetupPage(
                         {move || match test_result.get() {
                             Some(true)  => view! {
                                 <p class="text-sm text-green-600 dark:text-green-400 text-center font-medium">
-                                    "✅ Vitan'ny fampifandraisana !"
+                                    "✅ Connexion réussie !"
                                 </p>
                             }.into_any(),
                             Some(false) => view! {
                                 <p class="text-sm text-red-500 dark:text-red-400 text-center">
-                                    "❌ Tsy nahavita nifandray tamin'ny mpizara. Jereo ny IP, ny vala ary raha efa mandeha ny mpizara."
+                                    "❌ Impossible de joindre le serveur. Vérifiez l'IP, le port et que le serveur est démarré."
                                 </p>
                             }.into_any(),
                             None => view! { <span /> }.into_any(),
                         }}
-                    </div>
-                </Show>
-
-                // ── Message mode Serveur ──────────────────────────────────────
-                <Show when=move || mode.get() == AppMode::Server>
-                    <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20
-                                border border-blue-200 dark:border-blue-800
-                                p-3 text-sm text-blue-700 dark:text-blue-300">
-                        <p class="font-medium mb-1">"ℹ️ Ity PC ity no ho mpizara"</p>
-                        <p class="opacity-80">
-                            "Eto no haorina ny angona. "
-                            "Ny mpizara API dia hanomboka ho azy amin'ny vala "
-                            <strong>{move || server_port.get()}</strong>
-                            " mba hahafahan'ny PC hafa mifandray."
-                        </p>
                     </div>
                 </Show>
 
@@ -310,9 +400,9 @@ pub fn SetupPage(
                     on:click=on_save
                 >
                     {move || if saving.get() {
-                        "Fanombohana…".to_string()
+                        "Démarrage…".to_string()
                     } else {
-                        "✔ Hamarino sy atombohy".to_string()
+                        "✔ Valider et démarrer".to_string()
                     }}
                 </button>
             </div>

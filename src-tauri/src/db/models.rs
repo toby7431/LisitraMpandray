@@ -82,6 +82,18 @@ pub struct ContributionWithMember {
     #[serde(with = "rust_decimal::serde::str")]
     pub amount:        Decimal,
     pub recorded_year: i32,
+    /// Résumé des modifications : "5 000 Ar → 6 000 Ar · 2024 → 2025"
+    pub audit_summary: Option<String>,
+}
+
+/// Données pour modifier une cotisation existante (avec PIN et motif).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ContributionEditInput {
+    pub payment_date: String,
+    pub period:       String,
+    pub amount:       String,
+    pub pin:          String,
+    pub reason:       String,
 }
 
 // ─── YearSummary ──────────────────────────────────────────────────────────────

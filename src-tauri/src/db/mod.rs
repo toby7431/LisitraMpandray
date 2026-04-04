@@ -8,7 +8,7 @@ mod repo;
 
 pub use error::AppError;
 pub use models::{
-    Contribution, ContributionInput, ContributionWithMember,
+    Contribution, ContributionEditInput, ContributionInput, ContributionWithMember,
     Member, MemberInput, MemberWithTotal, YearSummary,
 };
 pub use repo::Repository;

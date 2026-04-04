@@ -40,4 +40,16 @@ pub struct ContributionWithMember {
     /// Decimal sérialisé en chaîne, ex. "15000.50"
     pub amount:        String,
     pub recorded_year: i32,
+    /// Résumé des modifications d'audit, ex. "10000 Ar → 5000 Ar · 2024 → 2025"
+    pub audit_summary: Option<String>,
+}
+
+/// Données pour modifier une cotisation (avec PIN et motif).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ContributionEditInput {
+    pub payment_date: String,
+    pub period:       String,
+    pub amount:       String,
+    pub pin:          String,
+    pub reason:       String,
 }

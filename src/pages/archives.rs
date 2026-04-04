@@ -2,11 +2,14 @@
 use leptos::prelude::*;
 
 use crate::{
-    components::icons::{
-        IconAlertTriangle, IconArchive, IconFileText, IconLock, IconSearch,
+    components::{
+        contribution_edit_modal::ContributionEditModal,
+        icons::{
+            IconAlertTriangle, IconArchive, IconFileText, IconLock, IconPencil, IconSearch,
+        },
     },
     models::{
-        contribution::ContributionWithMember,
+        contribution::{Contribution, ContributionWithMember},
         year_summary::YearSummary,
     },
     services::db_service,
@@ -41,6 +44,9 @@ pub fn Archives() -> impl IntoView {
     let selected_year: RwSignal<i32> = RwSignal::new(cur_year);
     // Recherche par nom de membre
     let recherche: RwSignal<String> = RwSignal::new(String::new());
+
+    // Contribution en cours d'édition (None = modal fermé)
+    let editing: RwSignal<Option<ContributionWithMember>> = RwSignal::new(None);
 
     // ── Charger les résumés + toutes les cotisations au montage ──────────────
     Effect::new(move |_| {
@@ -104,6 +110,14 @@ pub fn Archives() -> impl IntoView {
         }
     });
 
+    // ── Année ouverte ? ───────────────────────────────────────────────────────
+    let is_year_open = Memo::new(move |_| {
+        year_detail.get()
+            .as_ref()
+            .and_then(|d| d.closed_at.as_ref())
+            .is_none()
+    });
+
     view! {
         <div class="animate-fade-in space-y-4 sm:space-y-6">
 
@@ -128,6 +142,31 @@ pub fn Archives() -> impl IntoView {
                     <IconAlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{e}</span>
                 </div>
+            })}
+
+            // ── Modal d'édition ───────────────────────────────────────────────
+            {move || editing.get().map(|contrib| {
+                let year = selected_year.get();
+                let on_saved = Callback::new(move |_updated: Contribution| {
+                    // Recharger les deux listes pour avoir l'audit_summary à jour
+                    leptos::task::spawn_local(async move {
+                        if let Ok(liste) = db_service::get_contributions_by_year_with_member(year).await {
+                            contributions.set(liste);
+                        }
+                        if let Ok(liste) = db_service::get_all_contributions_with_member().await {
+                            all_contributions.set(liste);
+                        }
+                    });
+                    editing.set(None);
+                });
+                let on_cancel = Callback::new(move |_| editing.set(None));
+                view! {
+                    <ContributionEditModal
+                        contribution=contrib
+                        on_saved=on_saved
+                        on_cancel=on_cancel
+                    />
+                }
             })}
 
             // ── Onglets d'années ──────────────────────────────────────────────
@@ -325,6 +364,7 @@ pub fn Archives() -> impl IntoView {
                                     </div>
                                 }.into_any();
                             }
+                            let open = is_year_open.get();
                             view! {
                                 <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                                             rounded-2xl border border-gray-100 \
@@ -359,12 +399,23 @@ pub fn Archives() -> impl IntoView {
                                                             </th>
                                                         }.into_any()
                                                     }}
+                                                    // Colonne Fanovana (audit) — toujours visible
+                                                    <th class="text-left px-4 py-3 font-semibold \
+                                                               hidden md:table-cell">
+                                                        "Fanovana"
+                                                    </th>
+                                                    // Colonne actions (édition) — année ouverte seulement
+                                                    {open.then(|| view! {
+                                                        <th class="px-3 py-3" />
+                                                    })}
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 \
                                                           dark:divide-gray-700/50">
                                                 {filtered.get().into_iter().map(|c| {
                                                     let montant = format_ariary(&c.amount);
+                                                    let audit   = c.audit_summary.clone();
+                                                    let c_edit  = c.clone();
                                                     view! {
                                                         <tr class="tr-hover hover:bg-blue-50/40 \
                                                                    dark:hover:bg-blue-900/10 \
@@ -400,6 +451,31 @@ pub fn Archives() -> impl IntoView {
                                                                     </td>
                                                                 }.into_any()
                                                             }}
+                                                            // Cellule Fanovana
+                                                            <td class="px-4 py-2.5 hidden md:table-cell \
+                                                                       text-xs text-orange-600 dark:text-orange-400 \
+                                                                       italic max-w-[200px] truncate">
+                                                                {audit.unwrap_or_default()}
+                                                            </td>
+                                                            // Bouton édition (année ouverte)
+                                                            {open.then(|| {
+                                                                let c2 = c_edit.clone();
+                                                                view! {
+                                                                    <td class="px-3 py-2.5 text-center">
+                                                                        <button
+                                                                            class="p-1.5 rounded-lg \
+                                                                                   text-gray-400 hover:text-blue-600 \
+                                                                                   dark:hover:text-blue-400 \
+                                                                                   hover:bg-blue-50 dark:hover:bg-blue-900/20 \
+                                                                                   transition-colors"
+                                                                            title="Hanova"
+                                                                            on:click=move |_| editing.set(Some(c2.clone()))
+                                                                        >
+                                                                            <IconPencil class="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </td>
+                                                                }
+                                                            })}
                                                         </tr>
                                                     }
                                                 }).collect_view()}
@@ -436,6 +512,10 @@ pub fn Archives() -> impl IntoView {
                                                             } else {
                                                                 view! { <td class="hidden sm:table-cell" /> }.into_any()
                                                             }}
+                                                            <td class="hidden md:table-cell" />
+                                                            {is_year_open.get().then(|| view! {
+                                                                <td class="hidden" />
+                                                            })}
                                                         </tr>
                                                     </tfoot>
                                                 }

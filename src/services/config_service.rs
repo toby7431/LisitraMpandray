@@ -85,3 +85,8 @@ pub async fn test_server_connection(ip: &str, port: u16) -> Result<bool, String>
 pub async fn start_mock_server() -> Result<u16, String> {
     invoke_cmd("start_mock_server", to_js(&serde_json::json!({}))).await
 }
+
+/// Définit le PIN administrateur (une seule fois, mode serveur uniquement).
+pub async fn set_pin(pin: &str) -> Result<(), String> {
+    invoke_raw("set_pin", to_js(&serde_json::json!({ "pin": pin }))).await.map(|_| ())
+}

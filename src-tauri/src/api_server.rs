@@ -46,7 +46,9 @@ pub async fn start_server(repo: Repository, port: u16) {
         .route("/api/contributions/by-year/:year/with-member", get(get_contributions_by_year_with_member))
         .route("/api/contributions/all/with-member", get(get_all_contributions_with_member))
         .route("/api/contributions/by-year/:year", get(get_contributions_by_year))
-        .route("/api/contributions/:id", delete(delete_contribution_route))
+        .route("/api/contributions/:id", delete(delete_contribution_route).put(update_contribution_route))
+        // PIN
+        .route("/api/verify-pin", post(verify_pin_route))
         // Year summaries
         .route("/api/year-summaries", get(get_year_summaries))
         .route("/api/year-summaries/:year", get(get_year_summary))
@@ -232,6 +234,31 @@ async fn check_and_close_previous_year(
     State(repo): State<Repo>,
 ) -> Result<impl IntoResponse, ApiErr> {
     repo.check_and_close_previous_year().await.map(Json).map_err(e500)
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct VerifyPinBody {
+    pin: String,
+}
+
+async fn verify_pin_route(
+    State(repo): State<Repo>,
+    Json(body): Json<VerifyPinBody>,
+) -> Result<impl IntoResponse, ApiErr> {
+    repo.verify_pin(&body.pin).await.map(Json).map_err(e500)
+}
+
+async fn update_contribution_route(
+    State(repo): State<Repo>,
+    Path(id): Path<i64>,
+    Json(input): Json<crate::db::ContributionEditInput>,
+) -> Result<impl IntoResponse, ApiErr> {
+    repo.update_contribution(id, input)
+        .await
+        .map(Json)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))
 }
 
 // ── Export / Import ───────────────────────────────────────────────────────────
