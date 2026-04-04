@@ -9,7 +9,6 @@ use crate::{
     },
     models::member::MemberWithTotal,
     services::db_service,
-    utils::format_ariary,
 };
 
 pub const PAGE_SIZE: usize = 15;
@@ -17,7 +16,7 @@ pub const PAGE_SIZE: usize = 15;
 // ─── Tri ──────────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum SortCol { Carte, Nom, Adresse, Telephone, Travail, Genre, Total }
+pub enum SortCol { Carte, Nom, Adresse, Telephone, Travail, Genre }
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SortDir { Asc, Desc }
@@ -133,9 +132,9 @@ pub fn MemberTable(
                         <div class="flex justify-center mb-3">
                             <PageIcon name=icon class="w-12 h-12 text-gray-300 dark:text-gray-600" />
                         </div>
-                        <p class="text-base font-medium">"Aucun membre enregistré"</p>
+                        <p class="text-base font-medium">"Tsy misy mpikambana voasoratra"</p>
                         <p class="text-xs mt-1">
-                            "Cliquez sur « Nouveau membre » pour commencer."
+                            "Tsindrio « Mpikambana vaovao » hiantomboka."
                         </p>
                     </div>
                 }.into_any();
@@ -149,8 +148,8 @@ pub fn MemberTable(
                         <div class="flex justify-center mb-3">
                             <IconSearch class="w-12 h-12 text-gray-300 dark:text-gray-600" />
                         </div>
-                        <p class="text-base font-medium">"Aucun résultat"</p>
-                        <p class="text-xs mt-1">"Essayez d'autres termes de recherche."</p>
+                        <p class="text-base font-medium">"Tsy misy vokatra"</p>
+                        <p class="text-xs mt-1">"Andramo ny teny hafa."</p>
                     </div>
                 }.into_any();
             }
@@ -193,14 +192,13 @@ pub fn MemberTable(
                                                 />
                                             </th>
                                         })}
-                                        <Th label="N° Carte"     col=SortCol::Carte     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                        <Th label="Nom complet"  col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
-                                        <Th label="Adresse"      col=SortCol::Adresse   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
-                                        <Th label="Téléphone"    col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir extra_class="hidden lg:table-cell" />
-                                        <Th label="Travail"      col=SortCol::Travail   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
-                                        <Th label="Genre"        col=SortCol::Genre     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                        <Th label="Total cotis." col=SortCol::Total     sort_col=sort_col sort_dir=sort_dir />
-                                        <th class="px-3 py-3 text-right pr-4">"Actions"</th>
+                                        <Th label="N° Karatra" col=SortCol::Carte     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
+                                        <Th label="Anarana feno"    col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
+                                        <Th label="Adiresy"         col=SortCol::Adresse   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
+                                        <Th label="Finday"          col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir extra_class="hidden lg:table-cell" />
+                                        <Th label="Asa"             col=SortCol::Travail   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
+                                        <Th label="Lahy/Vavy"       col=SortCol::Genre     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
+                                        <th class="px-3 py-3 text-right pr-4">"Fiasana"</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -210,8 +208,7 @@ pub fn MemberTable(
                                         children=move |m: MemberWithTotal| {
                                             let m_edit = m.clone();
                                             let mid    = m.id;
-                                            let total  = format_ariary(&m.total_contributions);
-                                            let genre_label = if m.gender == "M" { "♂ Homme" } else { "♀ Femme" };
+                                            let genre_label = if m.gender == "M" { "♂ Lahy" } else { "♀ Vavy" };
 
                                             view! {
                                                 <tr class=move || {
@@ -274,14 +271,9 @@ pub fn MemberTable(
                                                                whitespace-nowrap">
                                                         {genre_label}
                                                     </td>
-                                                    <td class="px-3 py-2.5 font-mono font-semibold \
-                                                               text-gray-800 dark:text-white \
-                                                               whitespace-nowrap">
-                                                        {total}
-                                                    </td>
                                                     <td class="px-3 py-2.5 pr-4 text-right whitespace-nowrap">
                                                         <button
-                                                            title="Cotisation"
+                                                            title="Rakitra"
                                                             class="btn-ripple mr-2 text-xs text-amber-500 \
                                                                    dark:text-amber-400 rounded \
                                                                    hover:scale-125 transition-transform \
@@ -295,7 +287,7 @@ pub fn MemberTable(
                                                             <IconCoins class="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            title="Modifier"
+                                                            title="Hanova"
                                                             class=format!("btn-ripple mr-2 text-xs {} \
                                                                            rounded hover:scale-125 \
                                                                            transition-transform duration-150 \
@@ -314,7 +306,7 @@ pub fn MemberTable(
                                                             <IconPencil class="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            title="Supprimer"
+                                                            title="Fafana"
                                                             class="btn-ripple text-xs text-red-500 \
                                                                    dark:text-red-400 rounded \
                                                                    hover:scale-125 transition-transform \
@@ -323,7 +315,7 @@ pub fn MemberTable(
                                                                 let ok = web_sys::window()
                                                                     .and_then(|w| {
                                                                         w.confirm_with_message(
-                                                                            "Supprimer ce membre ? Cette action est irréversible.",
+                                                                            "Fafana ity mpikambana ity ? Tsy azo averina io.",
                                                                         ).ok()
                                                                     })
                                                                     .unwrap_or(false);
@@ -358,7 +350,7 @@ pub fn MemberTable(
                                     let p     = page.get();
                                     let from  = (p * PAGE_SIZE + 1).min(total);
                                     let to    = ((p + 1) * PAGE_SIZE).min(total);
-                                    format!("{from}–{to} sur {total}")
+                                    format!("{from}–{to} amin'ny {total}")
                                 }}
                             </span>
                             <div class="flex items-center gap-1">
@@ -374,7 +366,7 @@ pub fn MemberTable(
                                 >
                                     <span class="flex items-center gap-1">
                                         <IconChevronLeft class="w-3.5 h-3.5" />
-                                        "Préc."
+                                        "Teo aloha"
                                     </span>
                                 </button>
                                 <span class="px-3 py-1.5 text-xs font-medium \
@@ -392,7 +384,7 @@ pub fn MemberTable(
                                            hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                 >
                                     <span class="flex items-center gap-1">
-                                        "Suiv."
+                                        "Manaraka"
                                         <IconChevronRight class="w-3.5 h-3.5" />
                                     </span>
                                 </button>

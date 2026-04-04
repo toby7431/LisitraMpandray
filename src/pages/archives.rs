@@ -112,10 +112,10 @@ pub fn Archives() -> impl IntoView {
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white \
                             flex items-center gap-2">
                     <IconArchive class="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                    "Archives — Cotisations par année"
+                    "Tahiry — Rakitra isan-taona"
                 </h1>
                 <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
-                    "Sélectionnez une année pour consulter les cotisations et le résumé annuel."
+                    "Mifidiana taona mba hijery ny rakitra sy ny fintinana."
                 </p>
             </div>
 
@@ -198,7 +198,7 @@ pub fn Archives() -> impl IntoView {
                 </span>
                 <input
                     type="text"
-                    placeholder="Rechercher un membre…"
+                    placeholder="Hikaroka mpikambana…"
                     class="w-full pl-9 pr-3 py-2 text-sm rounded-xl \
                            bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                            border border-gray-200 dark:border-gray-600 \
@@ -237,8 +237,8 @@ pub fn Archives() -> impl IntoView {
                                         <div class="flex-1 min-w-0">
                                             <p class="font-semibold \
                                                        text-amber-800 dark:text-amber-300">
-                                                "Année " {sel.to_string()}
-                                                " — clôturée le " {closed_date}
+                                                "Taona " {sel.to_string()}
+                                                " — voakatona ny " {closed_date}
                                             </p>
                                             {note.map(|n| view! {
                                                 <p class="text-sm \
@@ -250,7 +250,7 @@ pub fn Archives() -> impl IntoView {
                                         </div>
                                         <div class="text-right flex-shrink-0">
                                             <p class="text-xs text-amber-600 dark:text-amber-400">
-                                                "Total archivé"
+                                                "Fitambarana voatahiry"
                                             </p>
                                             <p class="text-xl font-bold font-mono \
                                                        text-amber-800 dark:text-amber-200">
@@ -275,7 +275,7 @@ pub fn Archives() -> impl IntoView {
                                                      animate-pulse inline-block" />
                                         <span class="text-sm font-medium \
                                                      text-emerald-700 dark:text-emerald-300">
-                                            "Année " {sel.to_string()} " en cours"
+                                            "Taona " {sel.to_string()} " mandeha"
                                         </span>
                                     </div>
                                     {total_opt.map(|t| view! {
@@ -301,11 +301,11 @@ pub fn Archives() -> impl IntoView {
                             }
                             if filtered.get().is_empty() {
                                 let (is_empty_data, msg, sub) = if contributions.get().is_empty() {
-                                    (true, "Aucune cotisation enregistrée",
-                                     format!("pour l'année {}", selected_year.get()))
+                                    (true, "Tsy misy rakitra voasoratra",
+                                     format!("ho an'ny taona {}", selected_year.get()))
                                 } else {
-                                    (false, "Aucun résultat",
-                                     format!("aucun membre ne correspond à \"{}\"",
+                                    (false, "Tsy misy vokatra",
+                                     format!("tsy misy mpikambana mifanaraka amin'ny \"{}\"",
                                              recherche.get()))
                                 };
                                 return view! {
@@ -336,18 +336,18 @@ pub fn Archives() -> impl IntoView {
                                                            text-gray-600 dark:text-gray-300 \
                                                            text-xs uppercase tracking-wide">
                                                     <th class="text-left px-4 py-3 font-semibold">
-                                                        "Membre"
+                                                        "Mpikambana"
                                                     </th>
                                                     <th class="text-left px-4 py-3 font-semibold \
                                                                hidden sm:table-cell">
-                                                        "Période"
+                                                        "Vanim-potoana"
                                                     </th>
                                                     <th class="text-right px-4 py-3 font-semibold">
-                                                        "Montant"
+                                                        "Vola"
                                                     </th>
                                                     <th class="text-right px-4 py-3 font-semibold \
                                                                hidden sm:table-cell">
-                                                        "Date"
+                                                        "Daty"
                                                     </th>
                                                     {move || if recherche.get().is_empty() {
                                                         view! { <th class="hidden" /> }.into_any()
@@ -355,7 +355,7 @@ pub fn Archives() -> impl IntoView {
                                                         view! {
                                                             <th class="text-right px-4 py-3 font-semibold \
                                                                        hidden sm:table-cell">
-                                                                "Année"
+                                                                "Taona"
                                                             </th>
                                                         }.into_any()
                                                     }}
@@ -422,7 +422,7 @@ pub fn Archives() -> impl IntoView {
                                                             <td class="px-4 py-2.5 text-xs \
                                                                        text-gray-500 dark:text-gray-400 \
                                                                        font-medium">
-                                                                {count.to_string()} " cotisation(s)"
+                                                                {count.to_string()} " rakitra"
                                                             </td>
                                                             <td class="hidden sm:table-cell" />
                                                             <td class="px-4 py-2.5 text-right \

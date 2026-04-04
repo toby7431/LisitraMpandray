@@ -8,34 +8,36 @@ use crate::utils::{format_ariary, sleep_ms};
 // ─── Versets bibliques — sélection aléatoire à chaque ouverture ──────────────
 
 const VERSES: &[(&str, &str)] = &[
-    ("Jean 3:16",
-     "Car Dieu a tant aimé le monde qu'il a donné son Fils unique, afin que \
-      quiconque croit en lui ne périsse point, mais qu'il ait la vie éternelle."),
-    ("Philippiens 4:13",
-     "Je puis tout par celui qui me fortifie."),
-    ("Psaume 23:1",
-     "L'Éternel est mon berger : je ne manquerai de rien."),
-    ("Romains 8:28",
-     "Nous savons, du reste, que toutes choses concourent au bien de ceux \
-      qui aiment Dieu."),
-    ("Josué 1:9",
-     "Sois fort et courageux ! Ne te frappe pas de terreur et ne t'effraie pas, \
-      car l'Éternel, ton Dieu, est avec toi dans tout ce que tu entreprendras."),
-    ("Matthieu 11:28",
-     "Venez à moi, vous tous qui êtes fatigués et chargés, \
-      et je vous donnerai du repos."),
-    ("Proverbes 3:5-6",
-     "Confie-toi en l'Éternel de tout ton cœur, et ne t'appuie pas sur ta sagesse ; \
-      reconnais-le dans toutes tes voies, et il aplanira tes sentiers."),
-    ("Ésaïe 40:31",
-     "Ceux qui se confient en l'Éternel renouvellent leur force. \
-      Ils prennent le vol comme les aigles."),
-    ("Psaume 46:2",
-     "Dieu est pour nous un refuge et un appui, \
-      un secours qui ne manque jamais dans la détresse."),
-    ("1 Corinthiens 13:13",
-     "Maintenant ces trois choses demeurent : la foi, l'espérance, la charité ; \
-      mais la plus grande de ces choses, c'est la charité."),
+    ("Jaona 3:16",
+     "Fa toy izany no nitiavan'Andriamanitra izao tontolo izao: nomeny \
+      ny Zanani-lahy tokana, mba tsy ho very izay rehetra mino Azy, \
+      fa hanana fiainana mandrakizay."),
+    ("Filipiana 4:13",
+     "Izay rehetra vitako amin'ny mampahery ahy."),
+    ("Salamo 23:1",
+     "Jehovah no Mpiandry ahy; Tsy hanan-java-mahory aho."),
+    ("Romana 8:28",
+     "Ary fantatray fa ny zavatra rehetra dia miara-miasa hahasoa \
+      izay tia an'Andriamanitra."),
+    ("Josoa 1:9",
+     "Mahereza sy matanjaha; aza matahotra, ary aza mivadi-po; \
+      fa Jehovah Andriamanitrao no momba anao na aiza na aiza alehanao."),
+    ("Matio 11:28",
+     "Mankanesa amiko, ianareo rehetra izay miasa fatratra sy mavesatra entana, \
+      dia hampasoavy anareo Aho."),
+    ("Ohabolana 3:5-6",
+     "Matokia an'i Jehovah amin'ny fonao rehetra, ary aza miankina \
+      amin'ny fahalalanao; ekeo Izy amin'ny alalanao rehetra, \
+      dia Izy no hamaivana ny làlanao."),
+    ("Isaia 40:31",
+     "Fa izay miandry an'i Jehovah no hananany hery vaovao; \
+      Hanidina toy ny fanihin'ny voromahery izy."),
+    ("Salamo 46:2",
+     "Andriamanitra no fialofantsika sy heritsika, \
+      Mpamonjy mora azo amin'ny fahoriana."),
+    ("1 Korintiana 13:13",
+     "Fa ankehitriny dia mitoetra ireo telo ireo: ny finoana sy ny fanantenana \
+      ary ny fitiavana; fa ny fitiavana no lehibe indrindra amin'ireo."),
 ];
 
 // ─── Helpers async ────────────────────────────────────────────────────────────
@@ -98,7 +100,7 @@ pub fn Accueil() -> impl IntoView {
                            tracking-[0.25em] mb-4 \
                            text-blue-800 dark:text-indigo-300 \
                            select-none">
-                    "✦ Verset du jour ✦"
+                    "✦ Andininy androany ✦"
                 </p>
 
                 // Séparateur ornemental
@@ -136,16 +138,16 @@ pub fn Accueil() -> impl IntoView {
 
                 <StatCard
                     icon="cross"
-                    title="Communiants"
-                    subtitle="Membres actifs"
+                    title="Mpandray"
+                    subtitle="Mpikambana mavitrika"
                     color_class="from-blue-500 to-indigo-600"
                     count=communiants_display
                 />
 
                 <StatCard
                     icon="book"
-                    title="Cathécomènes"
-                    subtitle="En formation"
+                    title="Katekomena"
+                    subtitle="An'ampiofanana"
                     color_class="from-emerald-500 to-teal-600"
                     count=cathekumens_display
                 />
@@ -163,10 +165,10 @@ pub fn Accueil() -> impl IntoView {
                         <p class="text-xs font-semibold \
                                    text-amber-500 dark:text-amber-400 \
                                    uppercase tracking-widest">
-                            {format!("Cotisations {}", current_year)}
+                            {format!("Rakitra {}", current_year)}
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            "Total encaissé cette année"
+                            "Fitambarana voaraisina taona ity"
                         </p>
                     </div>
                     <p class="text-2xl sm:text-3xl font-bold font-mono \

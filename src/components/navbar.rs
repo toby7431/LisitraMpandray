@@ -24,10 +24,10 @@ struct Tab {
 }
 
 const TABS: &[Tab] = &[
-    Tab { label: "Accueil",      path: "/"            },
-    Tab { label: "Communiants",  path: "/communiants" },
-    Tab { label: "Cathécomènes", path: "/cathekomens" },
-    Tab { label: "Archives",     path: "/archives"    },
+    Tab { label: "Fandraisana",  path: "/"            },
+    Tab { label: "Mpandray",     path: "/communiants" },
+    Tab { label: "Katekomena",   path: "/cathekomens" },
+    Tab { label: "Tahiry",       path: "/archives"    },
 ];
 
 fn tab_icon(i: usize) -> impl IntoView {
@@ -153,7 +153,7 @@ pub fn Navbar() -> impl IntoView {
                                             border border-orange-200 dark:border-orange-700 \
                                             rounded-lg px-2 py-1">
                                     <span class="text-xs text-orange-700 dark:text-orange-300 whitespace-nowrap">
-                                        "Reconfigurer ?"
+                                        "Hamerina ?"
                                     </span>
                                     <button
                                         class="text-xs font-semibold px-2 py-0.5 rounded \
@@ -162,7 +162,7 @@ pub fn Navbar() -> impl IntoView {
                                         disabled=move || resetting.get()
                                         on:click=on_reset_confirm
                                     >
-                                        {move || if resetting.get() { "…" } else { "Oui" }}
+                                        {move || if resetting.get() { "…" } else { "Eny" }}
                                     </button>
                                     <button
                                         class="text-xs font-semibold px-2 py-0.5 rounded \
@@ -172,7 +172,7 @@ pub fn Navbar() -> impl IntoView {
                                                transition-colors"
                                         on:click=move |_| confirming.set(false)
                                     >
-                                        "Non"
+                                        "Tsia"
                                     </button>
                                 </div>
                             }.into_any()
@@ -180,7 +180,7 @@ pub fn Navbar() -> impl IntoView {
                             // ── Bouton icône engrenage ─────────────────────────
                             view! {
                                 <button
-                                    title="Reconfigurer le mode réseau"
+                                    title="Hamerina ny fikirana tambazotra"
                                     class="p-1.5 rounded-lg \
                                            text-gray-400 dark:text-gray-500 \
                                            hover:text-orange-500 dark:hover:text-orange-400 \

@@ -32,7 +32,7 @@ pub fn SetupPage(
         let ip = server_ip.get();
         let port = server_port.get();
         if ip.trim().is_empty() {
-            error_msg.set(Some("Veuillez entrer l'adresse IP du serveur.".to_string()));
+            error_msg.set(Some("Ampidiro ny adiresy IP ny mpizara.".to_string()));
             return;
         }
         error_msg.set(None);
@@ -59,10 +59,10 @@ pub fn SetupPage(
                     // Lancer le test automatiquement
                     match test_server_connection("127.0.0.1", port).await {
                         Ok(ok) => test_result.set(Some(ok)),
-                        Err(e) => error_msg.set(Some(format!("Erreur simulation : {e}"))),
+                        Err(e) => error_msg.set(Some(format!("Hadisoana andrana : {e}"))),
                     }
                 }
-                Err(e) => error_msg.set(Some(format!("Impossible de démarrer le serveur local : {e}"))),
+                Err(e) => error_msg.set(Some(format!("Tsy nahavita nanomboka ny mpizara eo an-toerana : {e}"))),
             }
             simulating.set(false);
         });
@@ -76,7 +76,7 @@ pub fn SetupPage(
         // Validation mode client
         if current_mode == AppMode::Client {
             if ip.trim().is_empty() {
-                error_msg.set(Some("Veuillez entrer l'adresse IP du serveur.".to_string()));
+                error_msg.set(Some("Ampidiro ny adiresy IP ny mpizara.".to_string()));
                 return;
             }
         }
@@ -98,7 +98,7 @@ pub fn SetupPage(
             match save_config(&config).await {
                 Ok(_) => is_configured.set(Some(true)),
                 Err(e) => {
-                    error_msg.set(Some(format!("Erreur : {e}")));
+                    error_msg.set(Some(format!("Hadisoana : {e}")));
                     saving.set(false);
                 }
             }
@@ -122,10 +122,10 @@ pub fn SetupPage(
                     <h1 class="text-2xl font-bold
                                text-blue-900 dark:text-blue-100
                                font-serif">
-                        "Configuration initiale"
+                        "Fametrahana voalohany"
                     </h1>
                     <p class="text-sm text-slate-500 dark:text-slate-400">
-                        "Ce PC est-il le serveur principal ou un poste client ?"
+                        "Mpizara sa mpanjifa ity PC ity ?"
                     </p>
                 </div>
 
@@ -147,9 +147,9 @@ pub fn SetupPage(
                         on:click=move |_| { mode.set(AppMode::Server); test_result.set(None); error_msg.set(None); }
                     >
                         <span class="text-2xl">"🖥️"</span>
-                        <span class="font-semibold text-sm">"Serveur"</span>
+                        <span class="font-semibold text-sm">"Mpizara"</span>
                         <span class="text-xs text-center opacity-70">
-                            "Ce PC détient les données"
+                            "Ity PC ity no mitana ny angona"
                         </span>
                     </button>
 
@@ -169,9 +169,9 @@ pub fn SetupPage(
                         on:click=move |_| { mode.set(AppMode::Client); error_msg.set(None); }
                     >
                         <span class="text-2xl">"💻"</span>
-                        <span class="font-semibold text-sm">"Client"</span>
+                        <span class="font-semibold text-sm">"Mpanjifa"</span>
                         <span class="text-xs text-center opacity-70">
-                            "Se connecte au serveur"
+                            "Mifandray amin'ny mpizara"
                         </span>
                     </button>
                 </div>
@@ -182,7 +182,7 @@ pub fn SetupPage(
                         <div>
                             <label class="block text-sm font-medium
                                           text-slate-700 dark:text-slate-300 mb-1">
-                                "Adresse IP du serveur"
+                                "Adiresy IP ny mpizara"
                             </label>
                             <input
                                 type="text"
@@ -205,7 +205,7 @@ pub fn SetupPage(
                         <div>
                             <label class="block text-sm font-medium
                                           text-slate-700 dark:text-slate-300 mb-1">
-                                "Port"
+                                "Vala"
                             </label>
                             <input
                                 type="number"
@@ -238,9 +238,9 @@ pub fn SetupPage(
                             on:click=on_test
                         >
                             {move || if testing.get() {
-                                "Test en cours…".to_string()
+                                "Andramana mandeha…".to_string()
                             } else {
-                                "🔌 Tester la connexion".to_string()
+                                "🔌 Andramana ny fampifandraisana".to_string()
                             }}
                         </button>
 
@@ -256,9 +256,9 @@ pub fn SetupPage(
                             on:click=on_simulate
                         >
                             {move || if simulating.get() {
-                                "Démarrage du serveur local…".to_string()
+                                "Fanombohana ny mpizara eo an-toerana…".to_string()
                             } else {
-                                "🧪 Simuler (test sur ce PC)".to_string()
+                                "🧪 Andrana (ity PC ity ihany)".to_string()
                             }}
                         </button>
 
@@ -266,12 +266,12 @@ pub fn SetupPage(
                         {move || match test_result.get() {
                             Some(true)  => view! {
                                 <p class="text-sm text-green-600 dark:text-green-400 text-center font-medium">
-                                    "✅ Connexion réussie !"
+                                    "✅ Vitan'ny fampifandraisana !"
                                 </p>
                             }.into_any(),
                             Some(false) => view! {
                                 <p class="text-sm text-red-500 dark:text-red-400 text-center">
-                                    "❌ Impossible de joindre le serveur. Vérifiez l'IP, le port et que le serveur est démarré."
+                                    "❌ Tsy nahavita nifandray tamin'ny mpizara. Jereo ny IP, ny vala ary raha efa mandeha ny mpizara."
                                 </p>
                             }.into_any(),
                             None => view! { <span /> }.into_any(),
@@ -284,12 +284,12 @@ pub fn SetupPage(
                     <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20
                                 border border-blue-200 dark:border-blue-800
                                 p-3 text-sm text-blue-700 dark:text-blue-300">
-                        <p class="font-medium mb-1">"ℹ️ Ce PC sera le serveur"</p>
+                        <p class="font-medium mb-1">"ℹ️ Ity PC ity no ho mpizara"</p>
                         <p class="opacity-80">
-                            "La base de données sera créée ici. "
-                            "Un serveur API démarrera automatiquement sur le port "
+                            "Eto no haorina ny angona. "
+                            "Ny mpizara API dia hanomboka ho azy amin'ny vala "
                             <strong>{move || server_port.get()}</strong>
-                            " pour permettre aux autres PC de se connecter."
+                            " mba hahafahan'ny PC hafa mifandray."
                         </p>
                     </div>
                 </Show>
@@ -310,9 +310,9 @@ pub fn SetupPage(
                     on:click=on_save
                 >
                     {move || if saving.get() {
-                        "Initialisation…".to_string()
+                        "Fanombohana…".to_string()
                     } else {
-                        "✔ Valider et démarrer".to_string()
+                        "✔ Hamarino sy atombohy".to_string()
                     }}
                 </button>
             </div>

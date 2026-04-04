@@ -213,7 +213,7 @@ pub fn ContributionModal(
 
         let amount_backend = amount_to_backend(&f_amount.get());
         if amount_backend.is_empty() || amount_backend == "." {
-            f_erreur.set(Some("Veuillez saisir un montant valide.".into()));
+            f_erreur.set(Some("Ampidiro ny vola marina.".into()));
             return;
         }
 
@@ -252,7 +252,7 @@ pub fn ContributionModal(
                             border-b border-gray-100 dark:border-gray-700">
                     <div>
                         <h2 class="text-base font-bold text-gray-800 dark:text-white">
-                            "Nouvelle cotisation"
+                            "Rakitra vaovao"
                         </h2>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             {membre_nom.clone()}
@@ -274,7 +274,7 @@ pub fn ContributionModal(
                     // Date + Période côte à côte
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class=LABEL>"Date *"</label>
+                            <label class=LABEL>"Daty *"</label>
                             <input
                                 type="date" required
                                 class=INPUT
@@ -283,10 +283,10 @@ pub fn ContributionModal(
                             />
                         </div>
                         <div>
-                            <label class=LABEL>"Période *"</label>
+                            <label class=LABEL>"Vanim-potoana *"</label>
                             <input
                                 type="text" required
-                                placeholder="ex : 2025"
+                                placeholder="ohatra : 2025"
                                 class=INPUT
                                 prop:value=move || f_period.get()
                                 on:input=move |ev| f_period.set(event_target_value(&ev))
@@ -296,7 +296,7 @@ pub fn ContributionModal(
 
                     // Montant
                     <div>
-                        <label class=LABEL>"Montant (Ariary) *"</label>
+                        <label class=LABEL>"Vola (Ariary) *"</label>
                         <div class="relative">
                             <input
                                 type="text"
@@ -353,7 +353,7 @@ pub fn ContributionModal(
                                    hover:bg-gray-200 dark:hover:bg-gray-600 \
                                    rounded-xl transition-colors"
                         >
-                            "Annuler"
+                            "Foana"
                         </button>
                         <button
                             type="submit"
@@ -364,12 +364,12 @@ pub fn ContributionModal(
                                    rounded-xl transition-colors shadow-sm"
                         >
                             {move || if f_loading.get() {
-                            view! { <span>"Enregistrement…"</span> }.into_any()
+                            view! { <span>"Tehirizina…"</span> }.into_any()
                         } else {
                             view! {
                                 <span class="flex items-center gap-1.5">
                                     <IconSave class="w-4 h-4" />
-                                    "Enregistrer"
+                                    "Tehirizina"
                                 </span>
                             }.into_any()
                         }}

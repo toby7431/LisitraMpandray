@@ -85,7 +85,7 @@ pub fn MemberForm(
     };
 
     let is_edit    = move || edit_id.get().is_some();
-    let modal_title = move || if is_edit() { "Modifier le membre" } else { "Nouveau membre" };
+    let modal_title = move || if is_edit() { "Hanova ny mpikambana" } else { "Mpikambana vaovao" };
 
     view! {
         <ModalWrapper
@@ -111,33 +111,33 @@ pub fn MemberForm(
                 <form on:submit=soumettre class="px-6 py-5 space-y-4">
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class=LABEL>"N° carte *"</label>
+                            <label class=LABEL>"N° karatra *"</label>
                             <input
                                 type="text" required
-                                placeholder="ex : C-0042"
+                                placeholder="ohatra : C-0042"
                                 class=INPUT
                                 prop:value=move || f_carte.get()
                                 on:input=move |ev| f_carte.set(event_target_value(&ev))
                             />
                         </div>
                         <div>
-                            <label class=LABEL>"Genre *"</label>
+                            <label class=LABEL>"Lahy/Vavy *"</label>
                             <select
                                 class=INPUT
                                 prop:value=move || f_genre.get()
                                 on:change=move |ev| f_genre.set(event_target_value(&ev))
                             >
-                                <option value="M">"Masculin"</option>
-                                <option value="F">"Féminin"</option>
+                                <option value="M">"Lahy"</option>
+                                <option value="F">"Vavy"</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
-                        <label class=LABEL>"Nom complet *"</label>
+                        <label class=LABEL>"Anarana feno *"</label>
                         <input
                             type="text" required
-                            placeholder="Prénom Nom"
+                            placeholder="Anarana Fianakaviana"
                             class=INPUT
                             prop:value=move || f_nom.get()
                             on:input=move |ev| f_nom.set(event_target_value(&ev))
@@ -145,10 +145,10 @@ pub fn MemberForm(
                     </div>
 
                     <div>
-                        <label class=LABEL>"Adresse"</label>
+                        <label class=LABEL>"Adiresy"</label>
                         <input
                             type="text"
-                            placeholder="Quartier, ville…"
+                            placeholder="Tanàna, faritra…"
                             class=INPUT
                             prop:value=move || f_adresse.get()
                             on:input=move |ev| f_adresse.set(event_target_value(&ev))
@@ -156,15 +156,15 @@ pub fn MemberForm(
                     </div>
 
                     <div>
-                        <label class=LABEL>"Téléphone"</label>
+                        <label class=LABEL>"Finday"</label>
                         <PhoneInput value=f_telephone class=INPUT />
                     </div>
 
                     <div>
-                        <label class=LABEL>"Travail / Emploi"</label>
+                        <label class=LABEL>"Asa"</label>
                         <input
                             type="text"
-                            placeholder="Enseignant, Commerçant…"
+                            placeholder="Mpampianatra, Mpivarotra…"
                             class=INPUT
                             prop:value=move || f_travail.get()
                             on:input=move |ev| f_travail.set(event_target_value(&ev))
@@ -181,7 +181,7 @@ pub fn MemberForm(
                                    hover:bg-gray-200 dark:hover:bg-gray-600 \
                                    rounded-xl transition-colors"
                         >
-                            "Annuler"
+                            "Foana"
                         </button>
                         <button
                             type="submit"
@@ -191,7 +191,7 @@ pub fn MemberForm(
                                            disabled:opacity-60 disabled:cursor-wait \
                                            transition-colors shadow-sm", btn_class)
                         >
-                            {move || if f_loading.get() { "Enregistrement…" } else { "Enregistrer" }}
+                            {move || if f_loading.get() { "Tehirizina…" } else { "Tehirizina" }}
                         </button>
                     </div>
                 </form>

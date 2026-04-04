@@ -59,7 +59,7 @@ pub fn TitleBar() -> impl IntoView {
                 // ── Minimiser ──
                 <button
                     on:click=on_minimize
-                    title="Minimiser"
+                    title="Fampikeleza"
                     class="group w-[46px] flex items-center justify-center \
                            text-gray-500 dark:text-gray-500 \
                            hover:bg-gray-200/80 dark:hover:bg-gray-700/80 \
@@ -76,7 +76,7 @@ pub fn TitleBar() -> impl IntoView {
                 // ── Maximiser / Restaurer ──
                 <button
                     on:click=on_maximize
-                    title=move || if is_maximized.get() { "Restaurer" } else { "Maximiser" }
+                    title=move || if is_maximized.get() { "Averina" } else { "Fanitarana" }
                     class="group w-[46px] flex items-center justify-center \
                            text-gray-500 dark:text-gray-500 \
                            hover:bg-gray-200/80 dark:hover:bg-gray-700/80 \
@@ -108,7 +108,7 @@ pub fn TitleBar() -> impl IntoView {
                 // ── Fermer ──
                 <button
                     on:click=on_close
-                    title="Fermer"
+                    title="Akatona"
                     class="group w-[46px] flex items-center justify-center \
                            text-gray-500 dark:text-gray-500 \
                            hover:bg-red-500 dark:hover:bg-red-600 \

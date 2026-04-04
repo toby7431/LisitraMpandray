@@ -76,7 +76,7 @@ pub fn YearToast() -> impl IntoView {
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-white font-bold text-sm leading-tight">
-                            "Année clôturée automatiquement"
+                            "Taona voakatona ho azy"
                         </p>
                         <p class="text-amber-100 text-xs mt-0.5">
                             {year.to_string()}
@@ -86,7 +86,7 @@ pub fn YearToast() -> impl IntoView {
                         on:click=close
                         class="text-white/70 hover:text-white flex-shrink-0 \
                                transition-colors duration-150 p-0.5 rounded"
-                        aria-label="Fermer"
+                        aria-label="Akatona"
                     >
                         <IconX class="w-4 h-4" />
                     </button>
@@ -95,7 +95,7 @@ pub fn YearToast() -> impl IntoView {
                 // ── Corps : total + note ───────────────────────────────────────
                 <div class="bg-white dark:bg-gray-800 px-4 py-3">
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        "Total archivé"
+                        "Fitambarana voatahiry"
                     </p>
                     <p class="text-lg font-bold text-gray-800 dark:text-white font-mono">
                         {total}

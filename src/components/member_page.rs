@@ -68,7 +68,7 @@ fn filter_and_sort(
     let mut list: Vec<MemberWithTotal> = membres
         .into_iter()
         .filter(|m| {
-            (genre == "Tous" || m.gender == genre)
+            (genre == "Rehetra" || m.gender == genre)
                 && (q.is_empty()
                     || m.full_name.to_lowercase().contains(&q)
                     || m.card_number.to_lowercase().contains(&q)
@@ -87,11 +87,6 @@ fn filter_and_sort(
             SortCol::Telephone => a.phone.as_deref().unwrap_or("").cmp(b.phone.as_deref().unwrap_or("")),
             SortCol::Travail   => a.job.as_deref().unwrap_or("").cmp(b.job.as_deref().unwrap_or("")),
             SortCol::Genre     => a.gender.cmp(&b.gender),
-            SortCol::Total     => {
-                let ta: i64 = a.total_contributions.parse().unwrap_or(0);
-                let tb: i64 = b.total_contributions.parse().unwrap_or(0);
-                ta.cmp(&tb)
-            }
         };
         if dir == SortDir::Desc { ord.reverse() } else { ord }
     });
@@ -157,7 +152,7 @@ pub fn MemberPage(
 
     // ── Recherche / Filtres / Tri / Pagination ─────────────────────────────────
     let recherche:    RwSignal<String>  = RwSignal::new(String::new());
-    let filtre_genre: RwSignal<String>  = RwSignal::new("Tous".into());
+    let filtre_genre: RwSignal<String>  = RwSignal::new("Rehetra".into());
     let sort_col:     RwSignal<SortCol> = RwSignal::new(SortCol::Nom);
     let sort_dir:     RwSignal<SortDir> = RwSignal::new(SortDir::Asc);
     let page:         RwSignal<usize>   = RwSignal::new(0);
@@ -298,9 +293,7 @@ pub fn MemberPage(
                     match db_service::import_members_csv(&text, member_type).await {
                         Ok(count) => {
                             notif_success.set(Some(format!(
-                                "{count} membre{} importé{}",
-                                if count > 1 { "s" } else { "" },
-                                if count > 1 { "s" } else { "" },
+                                "{count} mpikambana nampidirina",
                             )));
                             refresh_ctr.update(|n| *n += 1);
                         }
@@ -308,7 +301,7 @@ pub fn MemberPage(
                     }
                 }
                 Err(e) => notif_error.set(Some(
-                    e.as_string().unwrap_or_else(|| "Erreur lecture fichier".into())
+                    e.as_string().unwrap_or_else(|| "Hadisoana famakiana ny rakitra".into())
                 )),
             }
             import_loading.set(false);
@@ -387,7 +380,7 @@ pub fn MemberPage(
                                        flex items-center gap-1.5 shadow-sm"
                             >
                                 <IconTransfer class="w-4 h-4" />
-                                {format!("Transférer ({n})")}
+                                {format!("Famindra ({n})")}
                             </button>
                         })
                     }}
@@ -404,10 +397,10 @@ pub fn MemberPage(
                                rounded-xl transition-colors duration-200 \
                                flex items-center gap-1.5 shadow-sm \
                                disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Exporter la liste en Excel (.xlsx)"
+                        title="Alefa ny lisitra ho Excel (.xlsx)"
                     >
                         <IconUpload class="w-4 h-4" />
-                        {move || if export_loading.get() { "Export…" } else { "Exporter" }}
+                        {move || if export_loading.get() { "Alefa…" } else { "Alefa" }}
                     </button>
 
                     // ── Bouton Importer ──────────────────────────────────────
@@ -422,10 +415,10 @@ pub fn MemberPage(
                                rounded-xl transition-colors duration-200 \
                                flex items-center gap-1.5 shadow-sm \
                                disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Importer depuis un fichier CSV"
+                        title="Ampiditra avy amin'ny rakitra CSV"
                     >
                         <IconDownload class="w-4 h-4" />
-                        {move || if import_loading.get() { "Import…" } else { "Importer" }}
+                        {move || if import_loading.get() { "Ampiditra…" } else { "Ampiditra" }}
                     </button>
 
                     // ── Input fichier caché ──────────────────────────────────
@@ -445,7 +438,7 @@ pub fn MemberPage(
                                        btn_class)
                     >
                         <IconPlus class="w-4 h-4" />
-                        " Nouveau membre"
+                        " Mpikambana vaovao"
                     </button>
                 </div>
             </div>
@@ -459,7 +452,7 @@ pub fn MemberPage(
                     </span>
                     <input
                         type="text"
-                        placeholder="Rechercher…"
+                        placeholder="Hikaroka…"
                         class="w-full pl-9 pr-3 py-2 text-sm \
                                bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                                border border-gray-200 dark:border-gray-600 \
@@ -479,14 +472,14 @@ pub fn MemberPage(
                     prop:value=move || filtre_genre.get()
                     on:change=move |ev| filtre_genre.set(event_target_value(&ev))
                 >
-                    <option value="Tous">"Tous"</option>
-                    <option value="M">"Hommes"</option>
-                    <option value="F">"Femmes"</option>
+                    <option value="Rehetra">"Rehetra"</option>
+                    <option value="M">"Lehilahy"</option>
+                    <option value="F">"Vehivavy"</option>
                 </select>
                 <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                     {move || {
                         let n = sorted_filtered.get().len();
-                        format!("{n} membre{}", if n > 1 { "s" } else { "" })
+                        format!("{n} mpikambana")
                     }}
                 </span>
                 {move || {
@@ -497,7 +490,7 @@ pub fn MemberPage(
                         <span class="text-xs font-semibold text-amber-600 dark:text-amber-400 \
                                      bg-amber-50 dark:bg-amber-900/30 \
                                      px-2 py-1 rounded-lg whitespace-nowrap">
-                            {format!("{n} sélectionné{}", if n > 1 { "s" } else { "" })}
+                            {format!("{n} voafidy")}
                         </span>
                     })
                 }}

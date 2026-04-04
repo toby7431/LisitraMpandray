@@ -20,6 +20,13 @@ impl std::fmt::Display for AppError {
 
 impl From<sqlx::Error> for AppError {
     fn from(e: sqlx::Error) -> Self {
+        if let sqlx::Error::Database(ref db_err) = e {
+            if db_err.message().contains("UNIQUE constraint failed") {
+                return AppError::Validation(
+                    "Ity laharana karatra ity dia efa misy. Mifidiana laharana hafa.".into(),
+                );
+            }
+        }
         eprintln!("[DB Error] {e}");
         AppError::Db
     }

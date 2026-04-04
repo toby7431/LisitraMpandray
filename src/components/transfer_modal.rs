@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use crate::components::{icons::{IconCross, IconInfo}, modal_wrapper::ModalWrapper};
 
 /// Modal de confirmation avant le transfert de membres sélectionnés.
+#[allow(unused_variables)]
 #[component]
 pub fn TransferModal(
     /// Signal d'ouverture du modal.
@@ -26,7 +27,7 @@ pub fn TransferModal(
                             <IconCross class="w-10 h-10 text-white" />
                         </div>
                         <h2 class="text-base font-bold text-white">
-                            "Confirmer le transfert"
+                            "Hekena ny famindra"
                         </h2>
                     </div>
                 </div>
@@ -36,9 +37,8 @@ pub fn TransferModal(
                         {move || {
                             let n = selected.get().len();
                             format!(
-                                "Transférer {n} membre{} vers les {}s ?",
-                                if n > 1 { "s" } else { "" },
-                                transfer_to
+                                "Hamindra mpikambana {} ho any amin'ny Mpandray ?",
+                                n
                             )
                         }}
                     </p>
@@ -48,8 +48,8 @@ pub fn TransferModal(
                                 rounded-xl text-xs text-amber-700 dark:text-amber-300">
                         <IconInfo class="w-4 h-4 shrink-0 mt-0.5" />
                         <span>
-                            "Les contributions restent liées à ces membres — \
-                             leur historique est préservé."
+                            "Ny rakitra dia mitazona ny fifandraisana amin'ireo mpikambana — \
+                             voatahiry ny tantarany."
                         </span>
                     </div>
                     <div class="flex gap-3">
@@ -63,7 +63,7 @@ pub fn TransferModal(
                                    hover:bg-gray-200 dark:hover:bg-gray-600 \
                                    disabled:opacity-50 rounded-xl transition-colors"
                         >
-                            "Annuler"
+                            "Foana"
                         </button>
                         <button
                             type="button"
@@ -75,12 +75,12 @@ pub fn TransferModal(
                                    rounded-xl transition-colors shadow-sm"
                         >
                             {move || if loading.get() {
-                                view! { <span>"Transfert en cours…"</span> }.into_any()
+                                view! { <span>"Famindra mandeha…"</span> }.into_any()
                             } else {
                                 view! {
                                     <span class="flex items-center gap-1.5">
                                         <IconCross class="w-4 h-4" />
-                                        "Confirmer"
+                                        "Hekena"
                                     </span>
                                 }.into_any()
                             }}
