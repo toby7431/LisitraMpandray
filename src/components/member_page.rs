@@ -53,6 +53,62 @@ fn trigger_xlsx_download(bytes: &[u8], filename: &str) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const NOTIF_DISMISS_MS: u32 = 4000;
+
+fn filter_and_sort(
+    membres: Vec<MemberWithTotal>,
+    query: &str,
+    genre: &str,
+    col: SortCol,
+    dir: SortDir,
+) -> Vec<MemberWithTotal> {
+    let q = query.to_lowercase();
+    let mut list: Vec<MemberWithTotal> = membres
+        .into_iter()
+        .filter(|m| {
+            (genre == "Tous" || m.gender == genre)
+                && (q.is_empty()
+                    || m.full_name.to_lowercase().contains(&q)
+                    || m.card_number.to_lowercase().contains(&q)
+                    || m.address.as_deref().unwrap_or("").to_lowercase().contains(&q)
+                    || m.phone.as_deref().unwrap_or("").to_lowercase().contains(&q)
+                    || m.job.as_deref().unwrap_or("").to_lowercase().contains(&q))
+        })
+        .collect();
+
+    list.sort_by(|a, b| {
+        use std::cmp::Ordering;
+        let ord: Ordering = match col {
+            SortCol::Carte     => a.card_number.cmp(&b.card_number),
+            SortCol::Nom       => a.full_name.cmp(&b.full_name),
+            SortCol::Adresse   => a.address.as_deref().unwrap_or("").cmp(b.address.as_deref().unwrap_or("")),
+            SortCol::Telephone => a.phone.as_deref().unwrap_or("").cmp(b.phone.as_deref().unwrap_or("")),
+            SortCol::Travail   => a.job.as_deref().unwrap_or("").cmp(b.job.as_deref().unwrap_or("")),
+            SortCol::Genre     => a.gender.cmp(&b.gender),
+            SortCol::Total     => {
+                let ta: i64 = a.total_contributions.parse().unwrap_or(0);
+                let tb: i64 = b.total_contributions.parse().unwrap_or(0);
+                ta.cmp(&tb)
+            }
+        };
+        if dir == SortDir::Desc { ord.reverse() } else { ord }
+    });
+    list
+}
+
+fn auto_dismiss(signal: RwSignal<Option<String>>) {
+    Effect::new(move |_| {
+        if signal.get().is_some() {
+            leptos::task::spawn_local(async move {
+                sleep_ms(NOTIF_DISMISS_MS).await;
+                signal.set(None);
+            });
+        }
+    });
+}
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 #[component]
@@ -82,22 +138,8 @@ pub fn MemberPage(
     let notif_error:   RwSignal<Option<String>> = RwSignal::new(None);
     let notif_success: RwSignal<Option<String>> = RwSignal::new(None);
 
-    Effect::new(move |_| {
-        if notif_error.get().is_some() {
-            leptos::task::spawn_local(async move {
-                sleep_ms(4000).await;
-                notif_error.set(None);
-            });
-        }
-    });
-    Effect::new(move |_| {
-        if notif_success.get().is_some() {
-            leptos::task::spawn_local(async move {
-                sleep_ms(4000).await;
-                notif_success.set(None);
-            });
-        }
-    });
+    auto_dismiss(notif_error);
+    auto_dismiss(notif_success);
 
     let refresh_ctr: RwSignal<u32> = RwSignal::new(0);
 
@@ -129,43 +171,13 @@ pub fn MemberPage(
     });
 
     let sorted_filtered = Memo::new(move |_| {
-        let q     = recherche.get().to_lowercase();
-        let genre = filtre_genre.get();
-        let col   = sort_col.get();
-        let dir   = sort_dir.get();
-
-        let mut list: Vec<MemberWithTotal> = membres
-            .get()
-            .into_iter()
-            .filter(|m| {
-                (genre == "Tous" || m.gender == genre)
-                    && (q.is_empty()
-                        || m.full_name.to_lowercase().contains(&q)
-                        || m.card_number.to_lowercase().contains(&q)
-                        || m.address.as_deref().unwrap_or("").to_lowercase().contains(&q)
-                        || m.phone.as_deref().unwrap_or("").to_lowercase().contains(&q)
-                        || m.job.as_deref().unwrap_or("").to_lowercase().contains(&q))
-            })
-            .collect();
-
-        list.sort_by(|a, b| {
-            use std::cmp::Ordering;
-            let ord: Ordering = match col {
-                SortCol::Carte     => a.card_number.cmp(&b.card_number),
-                SortCol::Nom       => a.full_name.cmp(&b.full_name),
-                SortCol::Adresse   => a.address.as_deref().unwrap_or("").cmp(b.address.as_deref().unwrap_or("")),
-                SortCol::Telephone => a.phone.as_deref().unwrap_or("").cmp(b.phone.as_deref().unwrap_or("")),
-                SortCol::Travail   => a.job.as_deref().unwrap_or("").cmp(b.job.as_deref().unwrap_or("")),
-                SortCol::Genre     => a.gender.cmp(&b.gender),
-                SortCol::Total     => {
-                    let ta: i64 = a.total_contributions.parse().unwrap_or(0);
-                    let tb: i64 = b.total_contributions.parse().unwrap_or(0);
-                    ta.cmp(&tb)
-                }
-            };
-            if dir == SortDir::Desc { ord.reverse() } else { ord }
-        });
-        list
+        filter_and_sort(
+            membres.get(),
+            &recherche.get(),
+            &filtre_genre.get(),
+            sort_col.get(),
+            sort_dir.get(),
+        )
     });
 
     let total_pages = Memo::new(move |_| {

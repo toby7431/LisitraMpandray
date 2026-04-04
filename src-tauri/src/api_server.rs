@@ -36,16 +36,16 @@ pub async fn start_server(repo: Repository, port: u16) {
         .route("/api/health", get(health))
         // Members
         .route("/api/members", get(get_members).post(create_member))
-        .route("/api/members/:id", get(get_member).put(update_member).delete(delete_member_route))
         .route("/api/members/by-type/:member_type", get(get_members_by_type))
         .route("/api/members/by-type/:member_type/totals", get(get_members_by_type_with_total))
+        .route("/api/members/:id", get(get_member).put(update_member).delete(delete_member_route))
         .route("/api/transfer-members", post(transfer_members))
         // Contributions
         .route("/api/contributions", post(create_contribution))
-        .route("/api/contributions/:id", delete(delete_contribution_route))
         .route("/api/contributions/by-member/:member_id", get(get_contributions_by_member))
-        .route("/api/contributions/by-year/:year", get(get_contributions_by_year))
         .route("/api/contributions/by-year/:year/with-member", get(get_contributions_by_year_with_member))
+        .route("/api/contributions/by-year/:year", get(get_contributions_by_year))
+        .route("/api/contributions/:id", delete(delete_contribution_route))
         // Year summaries
         .route("/api/year-summaries", get(get_year_summaries))
         .route("/api/year-summaries/:year", get(get_year_summary))
@@ -60,12 +60,18 @@ pub async fn start_server(repo: Repository, port: u16) {
         .with_state(repo);
 
     let addr = format!("0.0.0.0:{port}");
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .unwrap_or_else(|e| panic!("Impossible de démarrer le serveur API sur {addr}: {e}"));
+    let listener = match tokio::net::TcpListener::bind(&addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("[API Server] Impossible de démarrer sur {addr}: {e}");
+            return;
+        }
+    };
 
     eprintln!("[API Server] Démarré sur le port {port}");
-    axum::serve(listener, app).await.expect("Erreur serveur Axum");
+    if let Err(e) = axum::serve(listener, app).await {
+        eprintln!("[API Server] Erreur: {e}");
+    }
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────

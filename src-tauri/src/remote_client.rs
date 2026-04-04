@@ -20,6 +20,10 @@ impl RemoteClient {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    fn url(&self, path: &str) -> String {
+        format!("{}{}", self.base_url, path)
+    }
+
     async fn check_response(resp: Response) -> Result<Response, AppError> {
         if resp.status().is_success() {
             Ok(resp)
@@ -32,7 +36,7 @@ impl RemoteClient {
     async fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, AppError> {
         let resp = self
             .client
-            .get(format!("{}{}", self.base_url, path))
+            .get(self.url(path))
             .send()
             .await
             .map_err(|e| AppError::Network(format!("Connexion échouée : {e}")))?;
@@ -51,7 +55,7 @@ impl RemoteClient {
     ) -> Result<T, AppError> {
         let resp = self
             .client
-            .post(format!("{}{}", self.base_url, path))
+            .post(self.url(path))
             .json(body)
             .send()
             .await
@@ -71,7 +75,7 @@ impl RemoteClient {
     ) -> Result<T, AppError> {
         let resp = self
             .client
-            .put(format!("{}{}", self.base_url, path))
+            .put(self.url(path))
             .json(body)
             .send()
             .await
@@ -87,7 +91,7 @@ impl RemoteClient {
     async fn delete_req(&self, path: &str) -> Result<(), AppError> {
         let resp = self
             .client
-            .delete(format!("{}{}", self.base_url, path))
+            .delete(self.url(path))
             .send()
             .await
             .map_err(|e| AppError::Network(format!("Connexion échouée : {e}")))?;
@@ -98,7 +102,7 @@ impl RemoteClient {
     async fn get_bytes(&self, path: &str) -> Result<Vec<u8>, AppError> {
         let resp = self
             .client
-            .get(format!("{}{}", self.base_url, path))
+            .get(self.url(path))
             .send()
             .await
             .map_err(|e| AppError::Network(format!("Connexion échouée : {e}")))?;

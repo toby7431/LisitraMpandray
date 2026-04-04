@@ -79,3 +79,9 @@ pub async fn test_server_connection(ip: &str, port: u16) -> Result<bool, String>
     )
     .await
 }
+
+/// Démarre un serveur Axum local (SQLite en mémoire) pour simuler le mode client.
+/// Retourne le port sur lequel le serveur écoute (127.0.0.1).
+pub async fn start_mock_server() -> Result<u16, String> {
+    invoke_cmd("start_mock_server", to_js(&serde_json::json!({}))).await
+}

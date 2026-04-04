@@ -40,26 +40,15 @@ const VERSES: &[(&str, &str)] = &[
 
 // ─── Helpers async ────────────────────────────────────────────────────────────
 
-async fn animate_count(signal: RwSignal<usize>, target: usize) {
-    if target == 0 {
-        return;
-    }
-    let steps: usize = 30;
-    for i in 1..=steps {
-        signal.set(target * i / steps);
-        sleep_ms(15).await;
-    }
-    signal.set(target);
-}
+const ANIM_STEPS: i64 = 35;
 
-async fn animate_count_i64(signal: RwSignal<i64>, target: i64) {
+async fn animate_count(signal: RwSignal<i64>, target: i64) {
     if target <= 0 {
-        signal.set(target);
+        signal.set(0);
         return;
     }
-    let steps: i64 = 40;
-    for i in 1..=steps {
-        signal.set(target * i / steps);
+    for i in 1..=ANIM_STEPS {
+        signal.set(target * i / ANIM_STEPS);
         sleep_ms(15).await;
     }
     signal.set(target);
@@ -75,22 +64,22 @@ pub fn Accueil() -> impl IntoView {
     let current_year = Date::new_0().get_full_year() as i32;
 
     // Signaux d'affichage animés
-    let communiants_display: RwSignal<usize> = RwSignal::new(0);
-    let cathekumens_display: RwSignal<usize> = RwSignal::new(0);
+    let communiants_display: RwSignal<i64> = RwSignal::new(0);
+    let cathekumens_display: RwSignal<i64> = RwSignal::new(0);
     let contributions_display: RwSignal<i64> = RwSignal::new(0);
 
     // Chargement + animation au montage
     Effect::new(move |_| {
         leptos::task::spawn_local(async move {
             if let Ok(list) = db_service::get_members_by_type("Communiant").await {
-                animate_count(communiants_display, list.len()).await;
+                animate_count(communiants_display, list.len() as i64).await;
             }
             if let Ok(list) = db_service::get_members_by_type("Cathekomen").await {
-                animate_count(cathekumens_display, list.len()).await;
+                animate_count(cathekumens_display, list.len() as i64).await;
             }
             if let Ok(Some(summary)) = db_service::get_year_summary(current_year).await {
                 if let Ok(total) = summary.total.parse::<f64>() {
-                    animate_count_i64(contributions_display, total as i64).await;
+                    animate_count(contributions_display, total as i64).await;
                 }
             }
         });
@@ -199,7 +188,7 @@ fn StatCard(
     title: &'static str,
     subtitle: &'static str,
     color_class: &'static str,
-    count: RwSignal<usize>,
+    count: RwSignal<i64>,
 ) -> impl IntoView {
     view! {
         <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur \

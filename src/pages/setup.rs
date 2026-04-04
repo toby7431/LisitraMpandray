@@ -5,7 +5,9 @@
 /// Après validation, la config est sauvegardée et l'app passe en mode normal.
 use leptos::prelude::*;
 
-use crate::services::config_service::{save_config, test_server_connection, AppConfig, AppMode};
+use crate::services::config_service::{
+    save_config, start_mock_server, test_server_connection, AppConfig, AppMode,
+};
 
 #[component]
 pub fn SetupPage(
@@ -20,6 +22,7 @@ pub fn SetupPage(
     // ── État UI ───────────────────────────────────────────────────────────────
     let saving = RwSignal::new(false);
     let testing = RwSignal::new(false);
+    let simulating = RwSignal::new(false);
     let test_result: RwSignal<Option<bool>> = RwSignal::new(None);
     let error_msg: RwSignal<Option<String>> = RwSignal::new(None);
 
@@ -41,6 +44,27 @@ pub fn SetupPage(
                 Err(e) => error_msg.set(Some(e)),
             }
             testing.set(false);
+        });
+    };
+
+    let on_simulate = move |_| {
+        error_msg.set(None);
+        test_result.set(None);
+        simulating.set(true);
+        leptos::task::spawn_local(async move {
+            match start_mock_server().await {
+                Ok(port) => {
+                    server_ip.set("127.0.0.1".to_string());
+                    server_port.set(port);
+                    // Lancer le test automatiquement
+                    match test_server_connection("127.0.0.1", port).await {
+                        Ok(ok) => test_result.set(Some(ok)),
+                        Err(e) => error_msg.set(Some(format!("Erreur simulation : {e}"))),
+                    }
+                }
+                Err(e) => error_msg.set(Some(format!("Impossible de démarrer le serveur local : {e}"))),
+            }
+            simulating.set(false);
         });
     };
 
@@ -210,13 +234,31 @@ pub fn SetupPage(
                                    hover:bg-slate-100 dark:hover:bg-slate-700
                                    transition-colors text-sm font-medium
                                    disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled=move || testing.get()
+                            disabled=move || testing.get() || simulating.get()
                             on:click=on_test
                         >
                             {move || if testing.get() {
                                 "Test en cours…".to_string()
                             } else {
                                 "🔌 Tester la connexion".to_string()
+                            }}
+                        </button>
+
+                        // Bouton simulation locale
+                        <button
+                            class="w-full py-2 px-4 rounded-lg border
+                                   border-amber-400 dark:border-amber-600
+                                   text-amber-700 dark:text-amber-300
+                                   hover:bg-amber-50 dark:hover:bg-amber-900/20
+                                   transition-colors text-sm font-medium
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled=move || testing.get() || simulating.get()
+                            on:click=on_simulate
+                        >
+                            {move || if simulating.get() {
+                                "Démarrage du serveur local…".to_string()
+                            } else {
+                                "🧪 Simuler (test sur ce PC)".to_string()
                             }}
                         </button>
 

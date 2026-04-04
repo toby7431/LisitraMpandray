@@ -4,6 +4,10 @@ mod db;
 mod export;
 mod remote_client;
 
+static MOCK_SERVER_PORT: std::sync::OnceLock<u16> = std::sync::OnceLock::new();
+/// Port du serveur API principal — initialisé une seule fois.
+static API_SERVER_PORT: std::sync::OnceLock<u16> = std::sync::OnceLock::new();
+
 use config::{load_config, save_config_to_disk, AppConfig, AppMode};
 use db::{
     Contribution, ContributionInput, ContributionWithMember, Member, MemberInput, MemberWithTotal,
@@ -27,6 +31,16 @@ pub enum DataSource {
     Unconfigured,
 }
 
+macro_rules! dispatch {
+    ($self:expr, $method:ident $(, $arg:expr)*) => {
+        match $self {
+            DataSource::Local(r)     => r.$method($($arg),*).await.map_err(|e| e.to_string()),
+            DataSource::Remote(c)    => c.$method($($arg),*).await.map_err(|e| e.to_string()),
+            DataSource::Unconfigured => Err(Self::not_configured()),
+        }
+    };
+}
+
 impl DataSource {
     fn not_configured() -> String {
         "non_configure".to_string()
@@ -35,154 +49,82 @@ impl DataSource {
     // ── Members ───────────────────────────────────────────────────────────────
 
     async fn get_members(&self) -> Result<Vec<Member>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_members().await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_members().await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_members)
     }
 
     async fn get_members_by_type(&self, t: &str) -> Result<Vec<Member>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_members_by_type(t).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_members_by_type(t).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_members_by_type, t)
     }
 
     async fn get_members_by_type_with_total(&self, t: &str) -> Result<Vec<MemberWithTotal>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_members_by_type_with_total(t).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_members_by_type_with_total(t).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_members_by_type_with_total, t)
     }
 
     async fn get_member(&self, id: i64) -> Result<Member, String> {
-        match self {
-            DataSource::Local(r)   => r.get_member(id).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_member(id).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_member, id)
     }
 
     async fn create_member(&self, input: MemberInput) -> Result<Member, String> {
-        match self {
-            DataSource::Local(r)   => r.create_member(input).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.create_member(input).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, create_member, input)
     }
 
     async fn update_member(&self, id: i64, input: MemberInput) -> Result<Member, String> {
-        match self {
-            DataSource::Local(r)   => r.update_member(id, input).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.update_member(id, input).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, update_member, id, input)
     }
 
     async fn delete_member(&self, id: i64) -> Result<(), String> {
-        match self {
-            DataSource::Local(r)   => r.delete_member(id).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.delete_member(id).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, delete_member, id)
     }
 
     async fn transfer_members(&self, ids: &[i64], new_type: &str) -> Result<usize, String> {
-        match self {
-            DataSource::Local(r)   => r.transfer_members(ids, new_type).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.transfer_members(ids, new_type).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, transfer_members, ids, new_type)
     }
 
     // ── Contributions ─────────────────────────────────────────────────────────
 
     async fn get_contributions(&self, member_id: i64) -> Result<Vec<Contribution>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_contributions(member_id).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_contributions(member_id).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_contributions, member_id)
     }
 
     async fn get_contributions_by_year(&self, year: i32) -> Result<Vec<Contribution>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_contributions_by_year(year).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_contributions_by_year(year).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_contributions_by_year, year)
     }
 
     async fn create_contribution(&self, input: ContributionInput) -> Result<Contribution, String> {
-        match self {
-            DataSource::Local(r)   => r.create_contribution(input).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.create_contribution(input).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, create_contribution, input)
     }
 
     async fn delete_contribution(&self, id: i64) -> Result<(), String> {
-        match self {
-            DataSource::Local(r)   => r.delete_contribution(id).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.delete_contribution(id).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, delete_contribution, id)
     }
 
     async fn get_contributions_by_year_with_member(
         &self,
         year: i32,
     ) -> Result<Vec<ContributionWithMember>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_contributions_by_year_with_member(year).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_contributions_by_year_with_member(year).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_contributions_by_year_with_member, year)
     }
 
     // ── Year Summaries ────────────────────────────────────────────────────────
 
     async fn get_year_summaries(&self) -> Result<Vec<YearSummary>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_year_summaries().await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_year_summaries().await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_year_summaries)
     }
 
     async fn get_year_summary(&self, year: i32) -> Result<Option<YearSummary>, String> {
-        match self {
-            DataSource::Local(r)   => r.get_year_summary(year).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.get_year_summary(year).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, get_year_summary, year)
     }
 
     async fn close_year(&self, year: i32, note: Option<String>) -> Result<YearSummary, String> {
-        match self {
-            DataSource::Local(r)   => r.close_year(year, note).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.close_year(year, note).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, close_year, year, note)
     }
 
     async fn reopen_year(&self, year: i32) -> Result<YearSummary, String> {
-        match self {
-            DataSource::Local(r)   => r.reopen_year(year).await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.reopen_year(year).await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, reopen_year, year)
     }
 
     async fn check_and_close_previous_year(&self) -> Result<Option<YearSummary>, String> {
-        match self {
-            DataSource::Local(r)   => r.check_and_close_previous_year().await.map_err(|e| e.to_string()),
-            DataSource::Remote(c)  => c.check_and_close_previous_year().await.map_err(|e| e.to_string()),
-            DataSource::Unconfigured => Err(Self::not_configured()),
-        }
+        dispatch!(self, check_and_close_previous_year)
     }
 
     // ── Export / Import ───────────────────────────────────────────────────────
@@ -240,13 +182,16 @@ async fn init_source(app_data_dir: &PathBuf, cfg: &AppConfig) -> Result<DataSour
                 .to_owned();
             let repo = Repository::new(&db_path).await.map_err(|e| e.to_string())?;
             let port = cfg.server_port;
-            let repo_clone = repo.clone();
-            // Démarrer le serveur Axum dans un thread séparé avec son propre runtime
-            std::thread::spawn(move || {
-                tokio::runtime::Runtime::new()
-                    .expect("Runtime Axum")
-                    .block_on(api_server::start_server(repo_clone, port));
-            });
+            // Ne démarrer le serveur qu'une seule fois (idempotent)
+            if API_SERVER_PORT.get().is_none() {
+                let repo_clone = repo.clone();
+                std::thread::spawn(move || {
+                    tokio::runtime::Runtime::new()
+                        .expect("Runtime Axum")
+                        .block_on(api_server::start_server(repo_clone, port));
+                });
+                let _ = API_SERVER_PORT.set(port);
+            }
             Ok(DataSource::Local(repo))
         }
         AppMode::Client => Ok(DataSource::Remote(RemoteClient::new(cfg.server_url()))),
@@ -281,6 +226,26 @@ async fn reset_config(state: tauri::State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Démarre un serveur Axum local (SQLite :memory:) pour tester le mode client.
+/// Idempotent : si déjà démarré, retourne le port existant.
+#[tauri::command]
+async fn start_mock_server() -> Result<u16, String> {
+    if let Some(&port) = MOCK_SERVER_PORT.get() {
+        return Ok(port);
+    }
+    let port = 7655u16;
+    let repo = Repository::new(":memory:").await.map_err(|e| e.to_string())?;
+    std::thread::spawn(move || {
+        tokio::runtime::Runtime::new()
+            .expect("Runtime mock")
+            .block_on(api_server::start_server(repo, port));
+    });
+    // Attendre que le serveur soit prêt
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    let _ = MOCK_SERVER_PORT.set(port);
+    Ok(port)
+}
+
 #[tauri::command]
 async fn test_server_connection(ip: String, port: u16) -> Result<bool, String> {
     let url = format!("http://{ip}:{port}/api/health");
@@ -292,7 +257,7 @@ async fn test_server_connection(ip: String, port: u16) -> Result<bool, String> {
         .await
     {
         Ok(resp) => Ok(resp.status().is_success()),
-        Err(_)   => Ok(false),
+        Err(e)   => Err(e.to_string()),
     }
 }
 
@@ -520,8 +485,13 @@ pub fn run() {
                 Some(cfg) => {
                     let rt = tokio::runtime::Runtime::new()
                         .expect("Impossible de créer le runtime Tokio");
-                    rt.block_on(init_source(&app_dir, &cfg))
-                        .expect("Impossible d'initialiser la source de données")
+                    match rt.block_on(init_source(&app_dir, &cfg)) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            eprintln!("[Setup] Erreur init source: {e} — démarrage sans config");
+                            DataSource::Unconfigured
+                        }
+                    }
                 }
             };
 
@@ -538,6 +508,7 @@ pub fn run() {
             save_config,
             reset_config,
             test_server_connection,
+            start_mock_server,
             // Member
             get_members,
             get_members_by_type,
