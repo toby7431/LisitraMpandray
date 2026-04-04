@@ -452,7 +452,7 @@ pub fn MemberPage(
                     </span>
                     <input
                         type="text"
-                        placeholder="Hikaroka…"
+                        placeholder="Ikaroka…"
                         class="w-full pl-9 pr-3 py-2 text-sm \
                                bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                                border border-gray-200 dark:border-gray-600 \

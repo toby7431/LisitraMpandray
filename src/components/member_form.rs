@@ -134,7 +134,7 @@ pub fn MemberForm(
                     </div>
 
                     <div>
-                        <label class=LABEL>"Anarana feno *"</label>
+                        <label class=LABEL>"Anarana sy fanampiny *"</label>
                         <input
                             type="text" required
                             placeholder="Anarana Fianakaviana"

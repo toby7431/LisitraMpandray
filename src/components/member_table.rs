@@ -193,12 +193,12 @@ pub fn MemberTable(
                                             </th>
                                         })}
                                         <Th label="N° Karatra" col=SortCol::Carte     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                        <Th label="Anarana feno"    col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
+                                        <Th label="Anarana sy fanampiny"    col=SortCol::Nom       sort_col=sort_col sort_dir=sort_dir />
                                         <Th label="Adiresy"         col=SortCol::Adresse   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
                                         <Th label="Finday"          col=SortCol::Telephone sort_col=sort_col sort_dir=sort_dir extra_class="hidden lg:table-cell" />
                                         <Th label="Asa"             col=SortCol::Travail   sort_col=sort_col sort_dir=sort_dir extra_class="hidden md:table-cell" />
                                         <Th label="Lahy/Vavy"       col=SortCol::Genre     sort_col=sort_col sort_dir=sort_dir extra_class="hidden sm:table-cell" />
-                                        <th class="px-3 py-3 text-right pr-4">"Fiasana"</th>
+                                        <th class="px-3 py-3 text-right pr-4">"Hetsika"</th>
                                     </tr>
                                 </thead>
                                 <tbody>

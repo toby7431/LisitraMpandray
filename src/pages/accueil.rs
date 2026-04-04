@@ -139,7 +139,7 @@ pub fn Accueil() -> impl IntoView {
                 <StatCard
                     icon="cross"
                     title="Mpandray"
-                    subtitle="Mpikambana mavitrika"
+                    subtitle=""
                     color_class="from-blue-500 to-indigo-600"
                     count=communiants_display
                 />
@@ -147,7 +147,7 @@ pub fn Accueil() -> impl IntoView {
                 <StatCard
                     icon="book"
                     title="Katekomena"
-                    subtitle="An'ampiofanana"
+                    subtitle=""
                     color_class="from-emerald-500 to-teal-600"
                     count=cathekumens_display
                 />
@@ -165,10 +165,10 @@ pub fn Accueil() -> impl IntoView {
                         <p class="text-xs font-semibold \
                                    text-amber-500 dark:text-amber-400 \
                                    uppercase tracking-widest">
-                            {format!("Rakitra {}", current_year)}
+                            {format!("Adidy {}", current_year)}
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            "Fitambarana voaraisina taona ity"
+                            "Fitambarana adidy amin'ity taona ity"
                         </p>
                     </div>
                     <p class="text-2xl sm:text-3xl font-bold font-mono \

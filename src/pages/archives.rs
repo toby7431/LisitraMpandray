@@ -126,10 +126,10 @@ pub fn Archives() -> impl IntoView {
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white \
                             flex items-center gap-2">
                     <IconArchive class="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                    "Tahiry — Rakitra isan-taona"
+                    "Tahiry — Raki-tsoratra isan-taona"
                 </h1>
                 <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
-                    "Mifidiana taona mba hijery ny rakitra sy ny fintinana."
+                    "Mifidiana taona mba hijery ny raki-tsoratra sy ny fintina."
                 </p>
             </div>
 
@@ -237,7 +237,7 @@ pub fn Archives() -> impl IntoView {
                 </span>
                 <input
                     type="text"
-                    placeholder="Hikaroka mpikambana…"
+                    placeholder="Ikaroka mpikambana…"
                     class="w-full pl-9 pr-3 py-2 text-sm rounded-xl \
                            bg-white/70 dark:bg-gray-800/70 backdrop-blur \
                            border border-gray-200 dark:border-gray-600 \
@@ -340,7 +340,7 @@ pub fn Archives() -> impl IntoView {
                             }
                             if filtered.get().is_empty() {
                                 let (is_empty_data, msg, sub) = if contributions.get().is_empty() {
-                                    (true, "Tsy misy rakitra voasoratra",
+                                    (true, "Tsy misy raki-tsoratra voasoratra",
                                      format!("ho an'ny taona {}", selected_year.get()))
                                 } else {
                                     (false, "Tsy misy vokatra",
@@ -498,7 +498,7 @@ pub fn Archives() -> impl IntoView {
                                                             <td class="px-4 py-2.5 text-xs \
                                                                        text-gray-500 dark:text-gray-400 \
                                                                        font-medium">
-                                                                {count.to_string()} " rakitra"
+                                                                {count.to_string()} " raki-tsoratra"
                                                             </td>
                                                             <td class="hidden sm:table-cell" />
                                                             <td class="px-4 py-2.5 text-right \

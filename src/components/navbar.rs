@@ -9,7 +9,7 @@ use leptos_router::{
 };
 
 use crate::components::icons::{
-    IconArchive, IconBookOpen, IconCross, IconHome,
+    IconArchive, IconBookOpen, IconCross, IconHome, IconRefresh,
 };
 use crate::components::theme_switcher::ThemeSwitcher;
 
@@ -113,8 +113,20 @@ pub fn Navbar() -> impl IntoView {
                         </div>
                     </nav>
 
-                    // ── Droite : thème ─────────────────────────────────────────
+                    // ── Droite : actualiser + thème ───────────────────────────
                     <div class="shrink-0 flex items-center gap-1">
+                        <button
+                            title="Mamerina"
+                            class="p-2 rounded-lg text-gray-500 dark:text-gray-400 \
+                                   hover:text-blue-600 dark:hover:text-blue-400 \
+                                   hover:bg-gray-100 dark:hover:bg-gray-800 \
+                                   transition-colors"
+                            on:click=move |_| {
+                                let _ = web_sys::window().map(|w| w.location().reload());
+                            }
+                        >
+                            <IconRefresh class="w-4 h-4" />
+                        </button>
                         <ThemeSwitcher />
                     </div>
 
