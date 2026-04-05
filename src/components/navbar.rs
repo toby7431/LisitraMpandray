@@ -21,7 +21,7 @@ struct Tab {
 const TABS: &[Tab] = &[
     Tab { label: "Fandraisana",  path: "/"            },
     Tab { label: "Mpandray",     path: "/communiants" },
-    Tab { label: "Katekomena",   path: "/cathekomens" },
+    Tab { label: "Tsy Mpandray",   path: "/cathekomens" },
     Tab { label: "Tahiry",       path: "/archives"    },
 ];
 

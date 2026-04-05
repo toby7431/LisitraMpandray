@@ -146,7 +146,7 @@ pub fn Accueil() -> impl IntoView {
 
                 <StatCard
                     icon="book"
-                    title="Katekomena"
+                    title="Tsy Mpandray"
                     subtitle=""
                     color_class="from-emerald-500 to-teal-600"
                     count=cathekumens_display
