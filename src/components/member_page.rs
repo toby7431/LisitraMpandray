@@ -556,7 +556,7 @@ pub fn MemberPage(
                         open=transfer_modal
                         loading=transfer_loading
                         selected=selected
-                        transfer_to=tt
+                        _transfer_to=tt
                         on_confirm=do_transfer
                     />
                 })

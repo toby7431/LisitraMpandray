@@ -14,7 +14,7 @@ pub fn TransferModal(
     /// IDs des membres sélectionnés (pour afficher le compteur).
     selected:         RwSignal<Vec<i64>>,
     /// Type cible du transfert (ex: "Communiant").
-    transfer_to:      &'static str,
+    _transfer_to:      &'static str,
     /// Callback déclenché quand l'utilisateur confirme.
     on_confirm:       Callback<()>,
 ) -> impl IntoView {

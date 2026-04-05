@@ -22,6 +22,7 @@ use crate::{
 /// une reconfiguration sans dépendance directe vers App.
 #[derive(Clone, Copy)]
 pub struct ConfigCtx {
+    #[allow(dead_code)]
     pub is_configured: RwSignal<Option<bool>>,
 }
 
