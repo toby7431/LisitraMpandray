@@ -67,6 +67,7 @@ pub async fn save_config(config: &AppConfig) -> Result<(), String> {
 }
 
 /// Supprime la configuration et remet l'app en état non-configuré.
+#[allow(dead_code)]
 pub async fn reset_config() -> Result<(), String> {
     invoke_raw("reset_config", to_js(&serde_json::json!({}))).await.map(|_| ())
 }
